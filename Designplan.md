@@ -26,3 +26,36 @@ The duckiebots already run a RIS bridge container, exposing rostopics on web end
 
 
 # Structure and detailed setup
+
+## Implementation Start: Docker + WebFrontend
+
+### Container runtime assumptions
+- ROS distro: ROS Noetic
+- Ubuntu version: 20.04 (Focal)
+- ROS master location: `http://{robot_name}.local:11311`
+- Bridge path for web frontend uses rosbridge-websocket
+
+### Docker image behavior
+- Base image is `ros:noetic-ros-base-focal`.
+- Container starts two services:
+    - Jupyter Lab on port `8888`
+    - Static WebFrontend on port `8080`
+- Startup script resolves robot identity from `ROBOT_NAME` (or hostname fallback) and exports ROS environment variables:
+    - `ROS_MASTER_URI`
+    - `ROS_IP`
+    - `ROS_HOSTNAME`
+
+### Recommended run command on robot
+Use host networking so `.local` name resolution and ROS topic discovery are more reliable:
+
+```bash
+docker build -t duckie-workshop:dev -f dockerfile .
+docker run --rm -it \
+    --network host \
+    -e ROBOT_NAME=<robot_name> \
+    duckie-workshop:dev
+```
+
+### Access points
+- Notebook: `http://{robot_name}.local:8888/lab`
+- WebFrontend: `http://{robot_name}.local:8000`
