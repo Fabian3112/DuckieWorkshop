@@ -19,7 +19,11 @@ Other Tasks could be:
 Ideally the pupils only have to replace a function in the robot class. Without having to work in the class directly but rather in the Jupiter notebook. 
 
 ## Webpage
-Additionally the Robot should provide a Web-frontend with which People can interact without having to Program. The Web-frontend probably has to communicate with the nodes using ros. This should allow the web-frontend to receive images and display them, like an image showing where white, and yellow lines where detected, where the robot plans to drive or where the robot detects obstacles or other robots. It should also be possible to start and stop the robot on the frontend. When the robot has stopped, it should take as little computation as possible.
+Additionally the Robot should provide a Web-frontend with which People can interact without having to Program. The Web-frontend probably has to communicate with the nodes using rosbridge websocket? If there are better options espetially for streaming the camera feed I am open for suggestions. This should allow the web-frontend to receive images and display them, like an image showing where white, and yellow lines where detected, where the robot plans to drive or where the robot detects obstacles or other robots. It should also be possible to start and stop the robot on the frontend. 
+
+For the beginning the design of the Webpage should be the following: It should contain a stream for the camera Image. It should Have a button for starting and stopping the robot. Additionally it should have some configuration available with sliders allowing to set the hsv color values for white and yellow lines and configure the pid controller values. 
+
+
 
 ## Rosbridge server
 The duckiebots already run a RIS bridge container, exposing rostopics on web endpoints, that I might be able to use in the Web-Frontend
@@ -59,3 +63,44 @@ docker run --rm -it \
 ### Access points
 - Notebook: `http://{robot_name}.local:8888/lab`
 - WebFrontend: `http://{robot_name}.local:8000`
+
+### WebFrontend implementation contract
+- Transport: rosbridge websocket on `ws://{robot_name}.local:9001`
+- Camera topic: `/{robot_name}/camera_node/image/compressed`
+- Start topic: `/{robot_name}/start` with `std_msgs/Int32` style payload `{ data: 1 }` or `{ data: 0 }`
+- HSV topics:
+        - `/{robot_name}/lane_detection_node/yellow`
+        - `/{robot_name}/lane_detection_node/white`
+- HSV payload shape:
+
+```json
+{
+    "header": {
+        "seq": 0,
+        "stamp": { "secs": 0, "nsecs": 0 },
+        "frame_id": ""
+    },
+    "h_high": 40,
+    "h_low": 20,
+    "s_high": 255,
+    "s_low": 80,
+    "v_high": 255,
+    "v_low": 120
+}
+```
+
+- PID topic: `/{robot_name}/lane_control_node/pid`
+- PID payload shape:
+
+```json
+{
+    "header": {
+        "seq": 0,
+        "stamp": { "secs": 0, "nsecs": 0 },
+        "frame_id": ""
+    },
+    "p": 6.0,
+    "i": 0.0,
+    "d": 0.1
+}
+```

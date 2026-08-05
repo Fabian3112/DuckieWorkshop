@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duckiebot Control Deck</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <main class="page">
+    <header class="hero card">
+      <div>
+        <p class="eyebrow">Duckiebot Workshop</p>
+        <h1>Control Deck</h1>
+        <p class="subtitle">Live camera, start and stop controls, and lane tuning over rosbridge websocket.</p>
+      </div>
+      <div class="hero-meta">
+        <span id="connectionStatus" class="status status-offline">offline</span>
+        <p id="endpointLabel" class="endpoint">ws://-.local:9001</p>
+      </div>
+    </header>
+
+    <section class="grid">
+      <section class="card control-panel">
+        <h2>Connection</h2>
+        <div class="field-grid single-column">
+          <label>
+            <span>Robot Name</span>
+            <input id="robotName" type="text" placeholder="tick" />
+          </label>
+          <label>
+            <span>WebSocket Port</span>
+            <input id="wsPort" type="number" value="9001" min="1" max="65535" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="connectButton" class="button button-primary">Connect</button>
+          <button id="disconnectButton" class="button button-secondary">Disconnect</button>
+        </div>
+        <p class="helper">The page connects to <strong id="robotLabel">robot_name.local</strong> using rosbridge websocket.</p>
+      </section>
+
+      <section class="card control-panel">
+        <h2>Robot Control</h2>
+        <div class="button-row button-row-large">
+          <button id="startButton" class="button button-success" disabled>Start Robot</button>
+          <button id="stopButton" class="button button-danger" disabled>Stop Robot</button>
+        </div>
+        <label class="checkbox-row">
+          <input id="cameraActive" type="checkbox" checked />
+          <span>Keep camera stream active</span>
+        </label>
+        <p class="helper">Start and stop publish to <strong id="startTopicLabel">/<span>robot_name</span>/start</strong> as Int32 values 1 and 0.</p>
+      </section>
+
+      <section class="card camera-panel">
+        <div class="panel-heading">
+          <h2>Camera Stream</h2>
+          <span id="cameraTopicLabel" class="topic-label">/<span>robot_name</span>/camera_node/image/compressed</span>
+        </div>
+        <div class="camera-frame">
+          <img id="cameraImage" alt="Duckiebot camera stream" />
+          <p id="cameraPlaceholder">No image received yet.</p>
+        </div>
+      </section>
+
+      <section class="card tuning-panel">
+        <div class="panel-heading">
+          <h2>Lane Detection</h2>
+          <button id="publishHsvButton" class="button button-primary" disabled>Publish HSV</button>
+        </div>
+        <div class="tuning-columns">
+          <fieldset>
+            <legend>Yellow</legend>
+            <div class="slider-stack" id="yellowControls"></div>
+          </fieldset>
+          <fieldset>
+            <legend>White</legend>
+            <div class="slider-stack" id="whiteControls"></div>
+          </fieldset>
+        </div>
+      </section>
+
+      <section class="card tuning-panel">
+        <div class="panel-heading">
+          <h2>PID Control</h2>
+          <button id="publishPidButton" class="button button-primary" disabled>Publish PID</button>
+        </div>
+        <div class="slider-stack" id="pidControls"></div>
+      </section>
+
+      <section class="card log-panel">
+        <div class="panel-heading">
+          <h2>Diagnostics</h2>
+          <button id="clearLogButton" class="button button-secondary">Clear</button>
+        </div>
+        <pre id="logOutput" class="log-output"></pre>
+      </section>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
