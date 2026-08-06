@@ -29,7 +29,8 @@ RUN pip3 install \
 
 RUN pip3 install --no-cache-dir \
 	jupyterlab==4.2.5 \
-	notebook==7.2.2
+	notebook==7.2.2 \
+	cv_bridge
 
 
 COPY Workshop ./Workshop
