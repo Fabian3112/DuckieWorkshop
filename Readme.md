@@ -18,7 +18,4 @@ Build Docker (requires Internet Connection and will download for some time)
 ```docker run -p 8081:80 -p 8888:8888 --name duckieworkshop duckieworkshop:latest```
 
 If testing (including ros master in the docker don't do it on the actual duckiebot)
-```docker run --network host --name duckieworkshop duckieworkshop:latest```
-
-## start docker container
-```docker start duckieworkshop```
+```docker run -it --network host -e ROS_MASTER_URI=http://tick.local:11311 --name duckieworkshop duckieworkshop:latest```

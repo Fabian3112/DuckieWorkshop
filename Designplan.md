@@ -43,7 +43,7 @@ The duckiebots already run a RIS bridge container, exposing rostopics on web end
 - Base image is `ros:noetic-ros-base-focal`.
 - Container starts two services:
     - Jupyter Lab on port `8888`
-    - Static WebFrontend on port `8080`
+    - Static WebFrontend on port `8765`
 - Startup script resolves robot identity from `ROBOT_NAME` (or hostname fallback) and exports ROS environment variables:
     - `ROS_MASTER_URI`
     - `ROS_IP`

@@ -25,9 +25,19 @@ echo "[startup] ROS_MASTER_URI=${ROS_MASTER_URI}"
 echo "[startup] ROS_IP=${ROS_IP}"
 echo "[startup] ROS_HOSTNAME=${ROS_HOSTNAME}"
 echo "[startup] BRIDGE_PATH=${BRIDGE_PATH:-/ros}"
+echo "[startup] FRONTEND_PORT=${FRONTEND_PORT}"
+echo "[startup] FRONTEND_DIR=${FRONTEND_DIR}"
 
-python3 -m http.server "${FRONTEND_PORT}" --bind 0.0.0.0 --directory "${FRONTEND_DIR}" &
+python3 -m http.server "${FRONTEND_PORT}" --bind 0.0.0.0 --directory "${FRONTEND_DIR}" >/tmp/frontend.log 2>&1 &
 frontend_pid=$!
+
+sleep 1
+if ! kill -0 "${frontend_pid}" 2>/dev/null; then
+  echo "[startup] frontend server failed to start"
+  cat /tmp/frontend.log || true
+  exit 1
+fi
+echo "[startup] frontend server started"
 
 cleanup() {
   echo "[startup] stopping services"

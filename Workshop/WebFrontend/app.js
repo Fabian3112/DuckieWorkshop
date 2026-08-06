@@ -23,15 +23,9 @@ const sliderDefinitions = {
 };
 
 const elements = {
-  robotName: document.getElementById("robotName"),
-  wsPort: document.getElementById("wsPort"),
-  connectButton: document.getElementById("connectButton"),
-  disconnectButton: document.getElementById("disconnectButton"),
   connectionStatus: document.getElementById("connectionStatus"),
   endpointLabel: document.getElementById("endpointLabel"),
-  robotLabel: document.getElementById("robotLabel"),
   cameraTopicLabel: document.getElementById("cameraTopicLabel"),
-  startTopicLabel: document.getElementById("startTopicLabel"),
   cameraImage: document.getElementById("cameraImage"),
   cameraPlaceholder: document.getElementById("cameraPlaceholder"),
   cameraActive: document.getElementById("cameraActive"),
@@ -47,6 +41,8 @@ const elements = {
 };
 
 const state = {
+  robotName: "",
+  wsPort: 9001,
   socket: null,
   status: "offline",
   reconnectDelayMs: 1000,
@@ -58,17 +54,12 @@ const state = {
 };
 
 function getRobotName() {
-  return elements.robotName.value.trim().toLowerCase();
-}
-
-function getPort() {
-  const value = Number(elements.wsPort.value);
-  return Number.isFinite(value) && value > 0 ? value : 9001;
+  return state.robotName;
 }
 
 function getEndpoint() {
   const robotName = getRobotName() || "-";
-  return `ws://${robotName}.local:${getPort()}`;
+  return `ws://${robotName}.local:${state.wsPort}`;
 }
 
 function getTopics() {
@@ -101,10 +92,8 @@ function setStatus(status) {
 function updateLabels() {
   const robotName = getRobotName() || "robot_name";
   elements.endpointLabel.textContent = getEndpoint();
-  elements.robotLabel.textContent = `${robotName}.local`;
   const topics = getTopics();
   elements.cameraTopicLabel.textContent = topics.camera;
-  elements.startTopicLabel.textContent = topics.start;
   state.topics = topics;
 }
 
@@ -228,7 +217,7 @@ function connect() {
     log("WebSocket disconnected.");
     state.subscribedCamera = false;
     setStatus("offline");
-    if (getRobotName()) {
+    if (state.robotName) {
       scheduleReconnect();
     }
   };
@@ -362,21 +351,30 @@ function mountSliders() {
   });
 }
 
-function bootstrapFromQuery() {
+function inferRobotNameFromHost() {
+  const host = window.location.hostname || "";
+  if (host.endsWith(".local")) {
+    return host.slice(0, -6);
+  }
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "tick";
+  }
+  return host || "tick";
+}
+
+function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   const robot = params.get("robot");
-  const port = params.get("port");
-  if (robot) {
-    elements.robotName.value = robot;
+  const port = Number(params.get("port"));
+
+  state.robotName = (robot || inferRobotNameFromHost()).toLowerCase();
+  if (Number.isFinite(port) && port > 0) {
+    state.wsPort = port;
   }
-  if (port) {
-    elements.wsPort.value = port;
-  }
+
   updateLabels();
 }
 
-elements.connectButton.addEventListener("click", connect);
-elements.disconnectButton.addEventListener("click", disconnect);
 elements.startButton.addEventListener("click", () => publishStart(1));
 elements.stopButton.addEventListener("click", () => publishStart(0));
 elements.publishHsvButton.addEventListener("click", publishHsvTopics);
@@ -384,8 +382,6 @@ elements.publishPidButton.addEventListener("click", publishPidTopic);
 elements.clearLogButton.addEventListener("click", () => {
   elements.logOutput.textContent = "";
 });
-elements.robotName.addEventListener("input", updateLabels);
-elements.wsPort.addEventListener("input", updateLabels);
 elements.cameraActive.addEventListener("change", () => {
   if (elements.cameraActive.checked) {
     subscribeCamera();
@@ -395,6 +391,7 @@ elements.cameraActive.addEventListener("change", () => {
 });
 
 mountSliders();
-bootstrapFromQuery();
+bootstrap();
 setStatus("offline");
-log("Ready. Enter robot name and connect.");
+log(`Ready on ${state.robotName}. Attempting automatic connection.`);
+connect();

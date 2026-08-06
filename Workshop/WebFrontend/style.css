@@ -139,27 +139,20 @@ h1 {
   padding: 20px;
 }
 
-.control-panel {
+.camera-panel {
+  grid-column: span 8;
+}
+
+.control-panel-right {
   grid-column: span 4;
 }
 
-.camera-panel,
 .log-panel {
-  grid-column: span 8;
+  grid-column: span 12;
 }
 
 .tuning-panel {
   grid-column: span 6;
-}
-
-.field-grid {
-  display: grid;
-  gap: 12px;
-  margin: 14px 0;
-}
-
-.single-column {
-  grid-template-columns: 1fr;
 }
 
 label,
@@ -321,7 +314,7 @@ input[type="range"] {
 }
 
 @media (max-width: 980px) {
-  .control-panel,
+  .control-panel-right,
   .camera-panel,
   .tuning-panel,
   .log-panel {
