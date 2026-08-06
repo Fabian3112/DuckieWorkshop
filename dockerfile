@@ -22,6 +22,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/* \
     ros-noetic-cv-bridge
 
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+RUN pip3 install \
+    pyzmq==26.0.3
+
 RUN pip3 install --no-cache-dir \
 	jupyterlab==4.2.5 \
 	notebook==7.2.2
