@@ -65,7 +65,7 @@ function getEndpoint() {
 function getTopics() {
   const robotName = getRobotName();
   return {
-    camera: `/${robotName}/camera_node/image/compressed`,
+    camera: `/${robotName}/robot/image/compressed`,
     start: `/${robotName}/start`,
     yellow: `/${robotName}/lane_detection_node/yellow`,
     white: `/${robotName}/lane_detection_node/white`,

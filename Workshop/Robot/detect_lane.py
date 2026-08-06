@@ -4,6 +4,9 @@ import cv2
 
 class LaneDetector:
     def __init__(self):
+        self.distance_look_ahead = 0.75
+
+
 
         # init white line parameters
         self.hue_white_l = 0
@@ -20,13 +23,11 @@ class LaneDetector:
         self.saturation_yellow_h = 255
         self.lightness_yellow_l = 120
         self.lightness_yellow_h = 255
-
-        
-        self.distance_look_ahead = 0.75
         pass
 
 
     def get_x_for_driving(self,distance, mask, no_lane_value, left_line):
+        distance = int(distance)
         grad = cv2.Sobel(mask, cv2.CV_16S, 1, 0, ksize=3, scale=1, delta=0, borderType=cv2.BORDER_DEFAULT)
         _,th1 = cv2.threshold(grad,127,255,cv2.THRESH_BINARY)
 

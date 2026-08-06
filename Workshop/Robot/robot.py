@@ -37,7 +37,7 @@ class Robot:
         #for image decompression
         self._bridge = CvBridge()
 
-        vehicle_name = os.environ['VEHICLE_NAME']
+        vehicle_name = os.environ['HOSTNAME']
         self._camera_topic = f"/{vehicle_name}/camera_node/image/compressed"
         twist_topic  = f"/{vehicle_name}/car_cmd_switch_node/cmd"
 
@@ -76,18 +76,22 @@ class Robot:
         self.bottom_left_y = 382
         self.bottom_right_x = -29
         self.bottom_right_y = 382
-        self.distance_look_ahead = 0.75
+        self.is_running = False
         print("done robot is ready")
 
+    def start(self):
+        self.is_running = True
+    def stop(self):
+        self.is_running = False
+    
     def image_callback(self, image_msg):
         image = self._bridge.compressed_imgmsg_to_cv2(image_msg)
 
-        self.follow_lane(image)
-
+        if self.is_running:
+            self.follow_lane(image)
 
     def follow_lane(self, image):
         print("starting lane following")
-
         
         detected_duckies = self.detect_duckies(image)
 

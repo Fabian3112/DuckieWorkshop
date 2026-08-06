@@ -18,8 +18,8 @@ class CrosswayDetector:
                            (self.hue_red_l,self.saturation_red_l, self.lightness_red_l), 
                            (self.hue_red_h,self.saturation_red_h, self.lightness_red_h),)
 
-        if mask_red.count_nonzero() > self.stop_line_threshold:
-            print("Red line detected")
-            return True,0
+        #if mask_red.count_nonzero() > self.stop_line_threshold:
+        #    print("Red line detected")
+        #    return True,0
         
         return False,0  

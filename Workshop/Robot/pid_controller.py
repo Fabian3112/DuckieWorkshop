@@ -4,6 +4,7 @@ class PIDController:
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
+        self.MAX_VEL = 0.2
 
         self.integral = 0.0
         self.previous_error = 0.0
@@ -15,8 +16,9 @@ class PIDController:
         self.integral += error
         derivative = error - self.previous_error
 
-        control_signal = (self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative)
+        omega = (self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative)
+        v = min(0.1, self.MAX_VEL - abs(omega))
 
         self.previous_error = error
 
-        return control_signal
+        return omega
