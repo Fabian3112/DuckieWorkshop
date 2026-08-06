@@ -24,6 +24,8 @@ RUN pip3 install --no-cache-dir \
 COPY Workshop ./Workshop
 COPY scripts/start_services.sh /usr/local/bin/start_services.sh
 
+RUN bash -lc "source /opt/ros/noetic/setup.bash && cd /workspace/Workshop/Duckietown_msg && catkin_make"
+
 
 RUN chmod +x /usr/local/bin/start_services.sh
 
@@ -39,4 +41,4 @@ HEALTHCHECK --interval=20s --timeout=5s --start-period=25s --retries=3 \
 	CMD curl -fsS "http://127.0.0.1:${JUPYTER_PORT}/lab" >/dev/null || exit 1
 
 
-ENTRYPOINT ["bash", "-c", "/usr/local/bin/start_services.sh & exec bash"]
+ENTRYPOINT ["/usr/local/bin/start_services.sh"]
