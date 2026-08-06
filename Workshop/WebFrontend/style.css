@@ -275,7 +275,7 @@ input[type="number"] {
 
 .tuning-columns {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -413,6 +413,10 @@ input[type="range"] {
 @media (max-width: 640px) {
   .page {
     width: min(96vw, 96vw);
+  }
+
+  .tuning-columns {
+    grid-template-columns: 1fr;
   }
 
   .slider-row {
