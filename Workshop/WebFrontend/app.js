@@ -306,7 +306,7 @@ function publishStart(value) {
   publish(state.topics.start, { data: value });
 }
 
-function makeSlider(section, definition) {
+function makeSingleSlider(section, definition) {
   const row = document.createElement("label");
   row.className = "slider-row";
 
@@ -339,15 +339,112 @@ function makeSlider(section, definition) {
   return row;
 }
 
+function makeDualRangeSlider(section, channelKey, label, lowDefinition, highDefinition) {
+  const row = document.createElement("div");
+  row.className = "slider-row slider-row-dual";
+
+  const title = document.createElement("span");
+  title.textContent = label;
+
+  const rangeWrap = document.createElement("div");
+  rangeWrap.className = "dual-range";
+
+  const track = document.createElement("div");
+  track.className = "dual-track";
+
+  const lowInput = document.createElement("input");
+  lowInput.type = "range";
+  lowInput.id = `${section}-${channelKey}_low`;
+  lowInput.min = lowDefinition.min;
+  lowInput.max = lowDefinition.max;
+  lowInput.step = lowDefinition.step;
+  lowInput.value = lowDefinition.value;
+  lowInput.disabled = true;
+
+  const highInput = document.createElement("input");
+  highInput.type = "range";
+  highInput.id = `${section}-${channelKey}_high`;
+  highInput.min = highDefinition.min;
+  highInput.max = highDefinition.max;
+  highInput.step = highDefinition.step;
+  highInput.value = highDefinition.value;
+  highInput.disabled = true;
+
+  const valuesWrap = document.createElement("div");
+  valuesWrap.className = "dual-values";
+
+  const lowOutput = document.createElement("output");
+  lowOutput.htmlFor = lowInput.id;
+
+  const highOutput = document.createElement("output");
+  highOutput.htmlFor = highInput.id;
+
+  function updateTrackAndValues() {
+    const min = Number(lowInput.min);
+    const max = Number(lowInput.max);
+    const low = Number(lowInput.value);
+    const high = Number(highInput.value);
+    const lowPercent = ((low - min) / (max - min)) * 100;
+    const highPercent = ((high - min) / (max - min)) * 100;
+
+    track.style.background = `linear-gradient(to right, #dbe7f8 0% ${lowPercent}%, #1d4ed8 ${lowPercent}% ${highPercent}%, #dbe7f8 ${highPercent}% 100%)`;
+    lowOutput.textContent = `L:${low}`;
+    highOutput.textContent = `H:${high}`;
+  }
+
+  lowInput.addEventListener("input", () => {
+    if (Number(lowInput.value) > Number(highInput.value)) {
+      lowInput.value = highInput.value;
+    }
+    updateTrackAndValues();
+    debounce(`${section}-${channelKey}-pair`, publishHsvTopics, 200);
+  });
+
+  highInput.addEventListener("input", () => {
+    if (Number(highInput.value) < Number(lowInput.value)) {
+      highInput.value = lowInput.value;
+    }
+    updateTrackAndValues();
+    debounce(`${section}-${channelKey}-pair`, publishHsvTopics, 200);
+  });
+
+  updateTrackAndValues();
+
+  rangeWrap.append(track, lowInput, highInput);
+  valuesWrap.append(lowOutput, highOutput);
+  row.append(title, rangeWrap, valuesWrap);
+  return row;
+}
+
+function appendHsvControls(section, targetElement) {
+  const definitionMap = Object.fromEntries(
+    sliderDefinitions[section].map((definition) => [definition.key, definition])
+  );
+
+  const channels = [
+    { key: "h", label: "Hue" },
+    { key: "s", label: "Sat" },
+    { key: "v", label: "Val" }
+  ];
+
+  channels.forEach((channel) => {
+    targetElement.appendChild(
+      makeDualRangeSlider(
+        section,
+        channel.key,
+        channel.label,
+        definitionMap[`${channel.key}_low`],
+        definitionMap[`${channel.key}_high`]
+      )
+    );
+  });
+}
+
 function mountSliders() {
-  sliderDefinitions.yellow.forEach((definition) => {
-    elements.yellowControls.appendChild(makeSlider("yellow", definition));
-  });
-  sliderDefinitions.white.forEach((definition) => {
-    elements.whiteControls.appendChild(makeSlider("white", definition));
-  });
+  appendHsvControls("yellow", elements.yellowControls);
+  appendHsvControls("white", elements.whiteControls);
   sliderDefinitions.pid.forEach((definition) => {
-    elements.pidControls.appendChild(makeSlider("pid", definition));
+    elements.pidControls.appendChild(makeSingleSlider("pid", definition));
   });
 }
 

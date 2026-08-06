@@ -151,8 +151,12 @@ h1 {
   grid-column: span 12;
 }
 
-.tuning-panel {
-  grid-column: span 6;
+.tuning-panel-lane {
+  grid-column: span 8;
+}
+
+.tuning-panel-pid {
+  grid-column: span 4;
 }
 
 label,
@@ -271,7 +275,7 @@ input[type="number"] {
 
 .tuning-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 
@@ -291,6 +295,81 @@ fieldset {
   grid-template-columns: 72px minmax(0, 1fr) 56px;
   gap: 10px;
   align-items: center;
+}
+
+.slider-row-dual {
+  grid-template-columns: 72px minmax(0, 1fr) 96px;
+}
+
+.dual-range {
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.dual-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  border-radius: 999px;
+  background: #dbe7f8;
+}
+
+.dual-range input[type="range"] {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  margin: 0;
+  transform: translateY(-50%);
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.dual-range input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: transparent;
+}
+
+.dual-range input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #1d4ed8;
+  margin-top: -4px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.dual-range input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: transparent;
+}
+
+.dual-range input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #1d4ed8;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.dual-values {
+  display: grid;
+  gap: 2px;
+}
+
+.dual-values output {
+  display: block;
+  text-align: right;
 }
 
 .slider-row output {
@@ -316,7 +395,8 @@ input[type="range"] {
 @media (max-width: 980px) {
   .control-panel-right,
   .camera-panel,
-  .tuning-panel,
+  .tuning-panel-lane,
+  .tuning-panel-pid,
   .log-panel {
     grid-column: 1 / -1;
   }
@@ -335,15 +415,19 @@ input[type="range"] {
     width: min(96vw, 96vw);
   }
 
-  .tuning-columns {
-    grid-template-columns: 1fr;
-  }
-
   .slider-row {
     grid-template-columns: 1fr;
   }
 
+  .slider-row-dual {
+    grid-template-columns: 1fr;
+  }
+
   .slider-row output {
+    text-align: left;
+  }
+
+  .dual-values output {
     text-align: left;
   }
 }
