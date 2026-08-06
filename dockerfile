@@ -19,12 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	iproute2 \
 	ca-certificates \
 	curl \
-	&& rm -rf /var/lib/apt/lists/*
+	&& rm -rf /var/lib/apt/lists/* \
+    ros-noetic-cv-bridge
 
 RUN pip3 install --no-cache-dir \
 	jupyterlab==4.2.5 \
-	notebook==7.2.2 \
-	cv-bridge
+	notebook==7.2.2
+
 
 COPY Workshop ./Workshop
 COPY scripts/start_services.sh /usr/local/bin/start_services.sh
