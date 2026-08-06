@@ -6,6 +6,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /workspace
 
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    pkg-config
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	python3-pip \
 	python3-opencv \
@@ -24,8 +29,6 @@ RUN pip3 install --no-cache-dir \
 COPY Workshop ./Workshop
 COPY scripts/start_services.sh /usr/local/bin/start_services.sh
 
-RUN bash -lc "source /opt/ros/noetic/setup.bash && cd /workspace/Workshop/Duckietown_msg && catkin_make"
-
 
 RUN chmod +x /usr/local/bin/start_services.sh
 
@@ -41,4 +44,4 @@ HEALTHCHECK --interval=20s --timeout=5s --start-period=25s --retries=3 \
 	CMD curl -fsS "http://127.0.0.1:${JUPYTER_PORT}/lab" >/dev/null || exit 1
 
 
-ENTRYPOINT ["/usr/local/bin/start_services.sh"]
+ENTRYPOINT ["bash", "-c", "/usr/local/bin/start_services.sh & exec bash"]
