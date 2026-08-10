@@ -9,7 +9,8 @@ WORKDIR /workspace
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
-    pkg-config
+    pkg-config \
+	nano
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	python3-pip \
@@ -30,7 +31,8 @@ RUN pip3 install \
 RUN pip3 install --no-cache-dir \
 	jupyterlab==4.2.5 \
 	notebook==7.2.2 \
-	cv_bridge
+	cv_bridge \
+	ipyturtle3
 
 
 COPY Workshop ./Workshop

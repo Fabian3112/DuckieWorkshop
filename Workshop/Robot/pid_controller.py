@@ -1,6 +1,6 @@
 class PIDController:
 
-    def __init__(self, Kp=0.5, Ki=0.1, Kd=0.05):
+    def __init__(self, Kp=9, Ki=0.0, Kd=5):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
@@ -14,11 +14,14 @@ class PIDController:
     def compute_control(self, lane_center):
         error = lane_center
         self.integral += error
+        self.integral = max(5,self.integral)
         derivative = error - self.previous_error
 
-        omega = (self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative)
-        v = min(0.1, self.MAX_VEL - abs(omega))
+        omega = -((self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative))
+        v = max(0.05, self.MAX_VEL - abs(omega)*0.1)
 
         self.previous_error = error
+        #print(f'error was : {error}')
+        #print(f'driving with v={v}, omega={omega}')
 
-        return omega
+        return v, omega

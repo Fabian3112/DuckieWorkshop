@@ -22,4 +22,4 @@ class CrosswayDetector:
         #    print("Red line detected")
         #    return True,0
         
-        return False,0  
+        return False,0, 0

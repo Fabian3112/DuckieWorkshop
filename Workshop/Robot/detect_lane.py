@@ -12,8 +12,8 @@ class LaneDetector:
         self.hue_white_l = 0
         self.hue_white_h = 255
         self.saturation_white_l = 0
-        self.saturation_white_h = 41
-        self.lightness_white_l = 161
+        self.saturation_white_h = 50
+        self.lightness_white_l = 160
         self.lightness_white_h = 255
         
         # init yellow line parameters
@@ -26,27 +26,28 @@ class LaneDetector:
         pass
 
 
-    def get_x_for_driving(self,distance, mask, no_lane_value, left_line):
+    def get_x_for_driving(self, mask, distance, no_lane_value, left_line, debug_img):
         distance = int(distance)
         grad = cv2.Sobel(mask, cv2.CV_16S, 1, 0, ksize=3, scale=1, delta=0, borderType=cv2.BORDER_DEFAULT)
+        if left_line:
+            grad = 0 - grad
         _,th1 = cv2.threshold(grad,127,255,cv2.THRESH_BINARY)
 
-        a = []
-        for row in range(distance-50, distance+50):
-            if np.where(th1[row] == 255)[0].size == 0:
-                continue
-            else:
-                if left_line:
-                    a.append(np.where(th1[row] == 255)[0][-1])
-                else:
-                    a.append(np.where(th1[row] == 255)[0][0])
+        a = np.where(th1[distance-50:distance+50] == 255)
 
-        if len(a) > 10:
-            return np.median(a)
+        #if left_line:
+        #    debug_img[(a[0],a[1])] = (0,255,0)
+
+        #else:
+        #    debug_img[(a[0],a[1])] = (255,0,0)
+            
+
+        if len(a[1]) > 10:
+            return np.median(a[1])
         else:
             return no_lane_value
     
-    def calculate_lane_center(self,  image):
+    def calculate_lane_center(self, image, debug_img):
 
         mask_yellow = cv2.inRange(image, 
                            (self.hue_yellow_l,self.saturation_yellow_l, self.lightness_yellow_l), 
@@ -59,8 +60,13 @@ class LaneDetector:
         white_alternative = int(len(image[0]) * 0.95)
         yellow_alternative = int(len(image[0]) * 0.05)
 
-        center_white = self.get_x_for_driving(mask_white,int(len(image)*self.distance_look_ahead), white_alternative, left_line=False)
-        center_yellow = self.get_x_for_driving(mask_yellow,int(len(image)*self.distance_look_ahead), yellow_alternative, left_line=True)
+        center_white = self.get_x_for_driving(mask_white,int(len(image)*self.distance_look_ahead), white_alternative, left_line=False,debug_img=debug_img)
+        center_yellow = self.get_x_for_driving(mask_yellow,int(len(image)*self.distance_look_ahead), yellow_alternative, left_line=True,debug_img=debug_img)
+
+
+        debug_img[np.where(mask_yellow == 255)] = [0,255,255]
+        debug_img[np.where(mask_white == 255)] = [255,255,255]
+
 
 
         if center_white <= center_yellow:
@@ -68,8 +74,9 @@ class LaneDetector:
                 center_yellow = yellow_alternative
             else:
                 center_white = white_alternative
-        
+
+        #print(f'white:{center_white}, yellow:{center_yellow}')
         lane_center = (center_white + center_yellow) / 2
 
-
-        return lane_center
+        cv2.circle(img=debug_img,center=(int(lane_center) , int(len(debug_img)/2)),radius=5,color=(0,255,0),thickness=5)
+        return (lane_center)/len(image[1])*2 - 1
