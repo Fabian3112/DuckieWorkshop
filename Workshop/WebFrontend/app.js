@@ -49,6 +49,7 @@ const state = {
   maxReconnectDelayMs: 8000,
   reconnectTimer: null,
   subscribedCamera: false,
+  advertisedTopics: new Set(),
   debounceTimers: new Map(),
   topics: null
 };
@@ -122,10 +123,56 @@ function send(payload) {
 }
 
 function publish(topic, msg, latch = false) {
+  ensureAdvertised(topic);
   const success = send({ op: "publish", topic, msg, latch });
   if (success) {
     log(`Published to ${topic}`);
   }
+}
+
+function getTopicType(topic) {
+  if (!state.topics) {
+    return null;
+  }
+
+  if (topic === state.topics.start) {
+    return "std_msgs/Int32";
+  }
+  if (topic === state.topics.yellow || topic === state.topics.white) {
+    return "std_msgs/String";
+  }
+  if (topic === state.topics.pid) {
+    return "std_msgs/String";
+  }
+  return null;
+}
+
+function ensureAdvertised(topic) {
+  if (state.advertisedTopics.has(topic)) {
+    return;
+  }
+
+  const type = getTopicType(topic);
+  if (!type) {
+    return;
+  }
+
+  const success = send({ op: "advertise", topic, type });
+  if (success) {
+    state.advertisedTopics.add(topic);
+    log(`Advertised ${topic} as ${type}`);
+  }
+}
+
+function advertiseControlTopics() {
+  if (!state.topics) {
+    return;
+  }
+
+  ensureAdvertised(state.topics.start);
+  ensureAdvertised(state.topics.yellow);
+  ensureAdvertised(state.topics.white);
+  ensureAdvertised(state.topics.pid);
 }
 
 function subscribeCamera() {
@@ -189,6 +236,7 @@ function teardownSocket() {
   }
   state.socket = null;
   state.subscribedCamera = false;
+  state.advertisedTopics.clear();
 }
 
 function connect() {
@@ -210,6 +258,7 @@ function connect() {
     state.reconnectDelayMs = 1000;
     setStatus("online");
     log("WebSocket connected.");
+    advertiseControlTopics();
     subscribeCamera();
   };
 
@@ -288,15 +337,15 @@ function publishHsvTopics() {
   if (!state.topics) {
     return;
   }
-  publish(state.topics.yellow, getSectionValues("yellow"));
-  publish(state.topics.white, getSectionValues("white"));
+  publish(state.topics.yellow, { data: JSON.stringify(getSectionValues("yellow")) });
+  publish(state.topics.white, { data: JSON.stringify(getSectionValues("white")) });
 }
 
 function publishPidTopic() {
   if (!state.topics) {
     return;
   }
-  publish(state.topics.pid, getSectionValues("pid"));
+  publish(state.topics.pid, { data: JSON.stringify(getSectionValues("pid")) });
 }
 
 function publishStart(value) {

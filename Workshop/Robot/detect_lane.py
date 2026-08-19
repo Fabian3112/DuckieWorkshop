@@ -1,9 +1,11 @@
 import rospy
 import numpy as np
 import cv2
+import json
+from std_msgs.msg import String
 
 class LaneDetector:
-    def __init__(self):
+    def __init__(self, vehicle_name=None):
         self.distance_look_ahead = 0.75
 
 
@@ -23,7 +25,35 @@ class LaneDetector:
         self.saturation_yellow_h = 255
         self.lightness_yellow_l = 120
         self.lightness_yellow_h = 255
-        pass
+
+        # init subscriber for lane detection (std_msgs/String JSON payload)
+        self.white_line_sub = rospy.Subscriber(f'/{vehicle_name}/lane_detection_node/white', String, self.white_line_callback)
+        self.yellow_line_sub = rospy.Subscriber(f'/{vehicle_name}/lane_detection_node/yellow', String, self.yellow_line_callback)
+
+    def white_line_callback(self, msg):
+        try:
+            data = json.loads(msg.data)
+            self.hue_white_l = int(data["h_low"])
+            self.hue_white_h = int(data["h_high"])
+            self.saturation_white_l = int(data["s_low"])
+            self.saturation_white_h = int(data["s_high"])
+            self.lightness_white_l = int(data["v_low"])
+            self.lightness_white_h = int(data["v_high"])
+        except Exception as exc:
+            rospy.logwarn_throttle(2.0, f"Failed parsing white HSV JSON: {exc}")
+
+    def yellow_line_callback(self, msg):
+        try:
+            data = json.loads(msg.data)
+            self.hue_yellow_l = int(data["h_low"])
+            self.hue_yellow_h = int(data["h_high"])
+            self.saturation_yellow_l = int(data["s_low"])
+            self.saturation_yellow_h = int(data["s_high"])
+            self.lightness_yellow_l = int(data["v_low"])
+            self.lightness_yellow_h = int(data["v_high"])
+        except Exception as exc:
+            rospy.logwarn_throttle(2.0, f"Failed parsing yellow HSV JSON: {exc}")
+
 
 
     def get_x_for_driving(self, mask, distance, no_lane_value, left_line, debug_img):

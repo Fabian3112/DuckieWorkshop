@@ -1,10 +1,12 @@
 import os
+from time import time
 
 import numpy as np
 from Robot.detect_lane import LaneDetector
 from Robot.pid_controller import PIDController
 from Robot.duckie_detector import DuckieDetector
-from Robot.crossway_detector import CrosswayDetector
+from Robot.crossway_detector import CrosswayDetector, CrosswayType
+from Robot.move import Mover
 from duckietown_msgs.msg import Twist2DStamped
 from std_msgs.msg import Int32
 
@@ -38,11 +40,12 @@ class Robot:
         #for image decompression
         self._bridge = CvBridge()
 
+        self.vehicle_name = os.environ['HOSTNAME']
 
 
-        lane_detector = LaneDetector()
+        lane_detector = LaneDetector(vehicle_name=self.vehicle_name)
         self.detect_lane = lane_detector.calculate_lane_center
-        pid_controller = PIDController()
+        pid_controller = PIDController(vehicle_name=self.vehicle_name)
         self.pid_controller = pid_controller.compute_control
     
         duckie_detector = DuckieDetector()
@@ -50,6 +53,11 @@ class Robot:
 
         crossway_detector = CrosswayDetector()
         self.detect_crossway = crossway_detector.detect_crossway
+
+        mover = Mover(vehicle_name=self.vehicle_name)
+        self.forward = mover.forward
+        self.turn = mover.turn
+
 
         self.state = State.Driving
 
@@ -61,13 +69,13 @@ class Robot:
         self.top_right_y = 218
         self.bottom_left_x = 606
         self.bottom_left_y = 382
-        self.bottom_right_x = -29
+        self.bottom_right_x = -29 ## TODO bottom left?
         self.bottom_right_y = 382
         self.is_running = False
         self.method_blocked = False
         
         print("initialising ros publishers")
-        vehicle_name = os.environ['HOSTNAME']
+        vehicle_name = self.vehicle_name
         
         #vlelocity publisher
         twist_topic  = f"/{vehicle_name}/car_cmd_switch_node/cmd"
@@ -86,13 +94,14 @@ class Robot:
         start_topic = f"/{vehicle_name}/start"
         self.start_subscriber = rospy.Subscriber(start_topic, Int32, self.callback_start)
         
-        
+        rospy.on_shutdown(self.stop)
         print("done robot is ready")
 
     def start(self):
         self.is_running = True
     def stop(self):
         self.is_running = False
+        time.sleep(0.1)
         self.publish_velocity(0.0,0.0)
 
     def callback_start(self,msg):
@@ -135,6 +144,35 @@ class Robot:
         if is_crossway:
             self.v = 0.0
             self.omega = 0.0
+
+            print(f"found crossway with heading error {crossway_heading_error} and type {crossway_type}")
+
+            #fix heading
+            self.turn(crossway_heading_error)
+
+            #choose direction
+            if crossway_type == CrosswayType.LeftStraightRight:
+                possible_directions = ["left","right","straight"]
+            elif crossway_type == CrosswayType.LeftStraight:
+                possible_directions = ["left","straight"]
+            elif crossway_type == CrosswayType.RightStraight:
+                possible_directions = ["right","straight"]
+            elif crossway_type == CrosswayType.LeftRight:
+                possible_directions = ["left","right"]
+
+            direction = np.random.choice(possible_directions)
+            print(f"choosing direction {direction}")
+
+            if direction == "left":
+                self.forward(0.5)
+                self.turn(np.radians(90))
+            elif direction == "right":
+                self.forward(0.2)
+                self.turn(np.radians(-90))
+            elif direction == "straight":
+                self.forward(0.6)
+
+            print(f'done with crossway, continuing lane following')
 
         elif len(detected_duckies) > 0:
             self.v = 0.0

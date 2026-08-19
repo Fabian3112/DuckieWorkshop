@@ -62,7 +62,7 @@ docker run --rm -it \
 
 ### Access points
 - Notebook: `http://{robot_name}.local:8888/lab`
-- WebFrontend: `http://{robot_name}.local:8000`
+- WebFrontend: `http://{robot_name}.local:8765`
 
 ### WebFrontend implementation contract
 - Transport: rosbridge websocket on `ws://{robot_name}.local:9001`
