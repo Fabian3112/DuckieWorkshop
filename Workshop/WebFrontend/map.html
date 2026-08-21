@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duckiebot Map</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .map-panel {
+      padding: 20px;
+    }
+
+    .map-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .map-topic {
+      flex: 1 1 320px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+
+    .map-frame {
+      position: relative;
+      height: min(72vh, 760px);
+      min-height: 420px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #111827;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .map-frame:active {
+      cursor: grabbing;
+    }
+
+    #mapCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-info {
+      min-height: 1.4em;
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 640px) {
+      .map-frame {
+        height: 65vh;
+        min-height: 320px;
+      }
+
+      .map-toolbar .button {
+        flex: 1 1 120px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <main class="page">
+    <header class="hero card">
+      <div>
+        <p class="eyebrow">Duckiebot Workshop</p>
+        <h1>Robot Map</h1>
+        <p class="subtitle">Live map with pan and zoom.</p>
+      </div>
+
+      <div class="hero-meta">
+        <span id="connectionStatus" class="status status-offline">offline</span>
+        <p id="endpointLabel" class="endpoint"></p>
+        <a class="button button-secondary" href="index.html">Back</a>
+      </div>
+    </header>
+
+    <section class="card map-panel">
+      <div class="panel-heading">
+        <h2>Map Stream</h2>
+      </div>
+
+      <div class="map-toolbar">
+        <input id="mapTopic" class="map-topic" type="text" aria-label="Map topic" />
+        <button id="connectButton" class="button button-primary">Connect</button>
+        <button id="fitButton" class="button button-secondary">Fit</button>
+        <button id="resetButton" class="button button-secondary">Reset</button>
+      </div>
+
+      <p id="mapInfo" class="map-info">No map image received yet.</p>
+
+      <div id="mapFrame" class="map-frame">
+        <canvas id="mapCanvas"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="map.js"></script>
+</body>
+</html>
