@@ -142,7 +142,7 @@ class Tracker:
             time.sleep(0.1)
             
             distance = math.sqrt((self.x - prev_x) ** 2 + (self.y - prev_y) ** 2)
-            rotation = self.theta - prev_theta
+            rotation = self._wrap_angle(self.theta - prev_theta)
 
             self.particle_filter.predict(distance, rotation)
 

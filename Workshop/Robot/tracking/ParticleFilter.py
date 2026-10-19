@@ -227,12 +227,14 @@ class ParticleFilter:
             points_x = points_x_dict[key]
             points_y = points_y_dict[key]
             points_theta = points_theta_dict[key]
-            
-            distances = (points_x - p.x) ** 2 + (points_y - p.y) ** 2 + ((points_theta - p.theta) % (2 * math.pi)) ** 2
+
+            dtheta = (points_theta - p.theta + math.pi) % (2 * math.pi) - math.pi            
+            distances = (points_x - p.x) ** 2 + (points_y - p.y) ** 2 + dtheta ** 2
+
             min_distance_index = np.argmin(distances)
             min_distance = distances[min_distance_index]
             p.point = min_distance_index
-            p.weight = 1.0 / ((min_distance) + 1e-6)
+            p.weight = 1.0 / ((min_distance) + 1e-2)
             
             if p.point == len(p.current_tile.points) - 1:
                 self.set_next_tile(p)
@@ -337,16 +339,20 @@ class ParticleFilter:
             current_tile_position = new_particle.current_tile.map_position
             map_position = new_particle.current_tile.map_position
             start_theta = new_particle.current_tile.orientation
-            type = new_particle.current_tile.type
+            if np.random > 0.3:
+                type = new_particle.current_tile.type
+            else:
+                type = random.choice(list(TileType))
             new_particle.current_tile = LaneSegment(
                 map_position=map_position,
                 theta=start_theta,
-                type=random.choice(list(TileType))
+                type=type #random.choice(list(TileType))
             )            
             #new_particle.map[current_tile_position] = new_particle.current_tile
             
             #new_particle.weight = 1.0 / self.n
             new_particles.append(new_particle)
+
 
         for idx in keep_indexes:
             new_particles.append(self.particles[idx])
