@@ -28,8 +28,10 @@ Copying docker image from robot to robot (Only a quick fix) (all these commands 
 ```scp duckieworkshop.tar duckie@ROBOTNAME.local:~/```
 at new robot:
 ```docker import duckieworkshop.tar```
-`docker run -it --network=host \
+```
+docker run -it --network=host \
   -w  /workspace \
   -e ROBOT_NAME=<ROBOTNAME> -e FRONTEND_PORT=8765 -e FRONTEND_DIR=/workspace/Workshop/WebFrontend -e ROS_DISTRO=noetic -e JUPYTER_PORT=8888 \
   --name duckieworkshop duckieworkshop:latest \
-  bash -c "/usr/local/bin/start_services.sh & exec bash" `
+  bash -c "/usr/local/bin/start_services.sh & exec bash" 
+```
