@@ -92,7 +92,11 @@ class Robot:
         print("Initialising ros subscriber")
         #image subscriber
         self._camera_topic = f"/{vehicle_name}/camera_node/image/compressed"
-        self.image_listener = rospy.Subscriber(self._camera_topic, CompressedImage, self.image_callback)
+        # queue_size=1: always work on the newest image. Without it old images pile up
+        # (for example during a turn) and the robot reacts to what it saw seconds ago.
+        # buff_size must be big enough for a whole image, otherwise queue_size is ignored.
+        self.image_listener = rospy.Subscriber(self._camera_topic, CompressedImage, self.image_callback,
+                                               queue_size=1, buff_size=2**24)
 
         #start robot subscriber
         start_topic = f"/{vehicle_name}/start"
@@ -188,11 +192,11 @@ class Robot:
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         self.image_hsv = hsv_img
         
-        croped_image = self.crop_image(hsv_img)
-        
-        
         debug_img = self.crop_image(image)
         self.image_croped = debug_img
+
+        # converting the small cropped image is cheaper than cropping the HSV image again
+        croped_image = cv2.cvtColor(debug_img, cv2.COLOR_BGR2HSV)
 
         # before the lane detection draws into debug_img
         detected_duckies = self.detect_duckies(croped_image, debug_img)
@@ -265,6 +269,9 @@ class Robot:
         self.velocity_publisher.publish(message)
 
     def publish_image(self,image):
+        # nobody is watching the debug image, so skip the JPEG encoding
+        if self.debug_image_publisher.get_num_connections() == 0:
+            return
         debug_msg = CompressedImage()
         debug_msg.header.stamp = rospy.Time.now()
         debug_msg.format = "jpeg"
