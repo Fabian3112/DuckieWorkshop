@@ -85,8 +85,8 @@ class Robot:
         crop_bounds['bottom_right_x'] = self.bottom_right_x
         crop_bounds['bottom_right_y'] = self.bottom_right_y
 
-        duckie_detector = DuckieDetector(crop_bounds)
-        self.detect_duckies = duckie_detector.detect_duckies
+        self.duckie_detector = DuckieDetector(crop_bounds, vehicle_name=self.vehicle_name)
+        self.detect_duckies = self.duckie_detector.detect_duckies
         
         print("initialising ros publishers")
         vehicle_name = self.vehicle_name
@@ -115,6 +115,14 @@ class Robot:
         self.redline = False
         self.drive_intersection = False
         self.intersection_possibilities = []        
+
+        # duck evasion: turn left, drive forward, turn right, then follow the lane again
+        self.duckie = False
+        self.duck_left_degrees = 45
+        self.duck_forward_distance = 0.2
+        self.duck_right_degrees = 90
+        self.duck_cooldown = 2.0    # seconds after an evasion in which ducks are ignored
+        self._last_evasion = 0.0
         
         print("done robot is ready")
 
@@ -143,6 +151,26 @@ class Robot:
     def get_intersection(self):
         return self.intersection_possibilities
 
+    def get_duckie(self):
+        return self.duckie
+
+    def evade_duckie(self):
+        print('duck ahead, evading to the left')
+        self.publish_velocity(0.0, 0.0)
+        steps = [
+            lambda: self.left(self.duck_left_degrees),
+            lambda: self.forward(self.duck_forward_distance),
+            lambda: self.right(self.duck_right_degrees),
+        ]
+        for step in steps:
+            # stop button pressed during the manoeuvre
+            if not self.is_running:
+                break
+            step()
+        self.publish_velocity(0.0, 0.0)
+        self._last_evasion = time.time()
+        print('duck evaded, back to lane following')
+
     
     def image_callback(self, image_msg):
         image = self._bridge.compressed_imgmsg_to_cv2(image_msg)
@@ -168,6 +196,7 @@ class Robot:
         #print("starting lane following")
         
         detected_duckies = self.detect_duckies(image)
+        self.duckie = len(detected_duckies) > 0
 
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         self.image_hsv = hsv_img
@@ -223,7 +252,11 @@ class Robot:
                     print(f'here I was f')
                     self.forward(0.4)
 
-        elif len(detected_duckies) > 0:
+        elif self.duckie and time.time() - self._last_evasion > self.duck_cooldown:
+            if self.is_running and self.duckie_detector.evade:
+                self.evade_duckie()
+                return
+            # evasion switched off: stop in front of the duck
             self.v = 0.0
             self.omega = 0.0
 
