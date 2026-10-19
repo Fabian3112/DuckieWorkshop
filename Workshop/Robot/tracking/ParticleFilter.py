@@ -339,7 +339,7 @@ class ParticleFilter:
             current_tile_position = new_particle.current_tile.map_position
             map_position = new_particle.current_tile.map_position
             start_theta = new_particle.current_tile.orientation
-            if np.random > 0.3:
+            if np.random.rand() > 0.3:
                 type = new_particle.current_tile.type
             else:
                 type = random.choice(list(TileType))
