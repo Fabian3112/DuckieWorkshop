@@ -15,7 +15,7 @@ Go into folder
 
 Build Docker (requires Internet Connection and will download for some time)
 ```docker build -t duckieworkshop:latest . ```
-```docker run -p 8081:80 -p 8888:8888 --name duckieworkshop duckieworkshop:latest```
+```docker run --network=host --name duckieworkshop duckieworkshop:latest```
 
 Start Docker container
 ```docker start -i duckieworkshop```
@@ -28,8 +28,8 @@ Copying docker image from robot to robot (Only a quick fix) (all these commands 
 ```scp duckieworkshop.tar duckie@ROBOTNAME.local:~/```
 at new robot:
 ```docker import duckieworkshop.tar```
-```docker run -it --network=host \
+`docker run -it --network=host \
   -w  /workspace \
   -e ROBOT_NAME=<ROBOTNAME> -e FRONTEND_PORT=8765 -e FRONTEND_DIR=/workspace/Workshop/WebFrontend -e ROS_DISTRO=noetic -e JUPYTER_PORT=8888 \
   --name duckieworkshop duckieworkshop:latest \
-  bash -c "/usr/local/bin/start_services.sh & exec bash"    ```
+  bash -c "/usr/local/bin/start_services.sh & exec bash" `
