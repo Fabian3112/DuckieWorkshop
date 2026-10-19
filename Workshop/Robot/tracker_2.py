@@ -56,7 +56,7 @@ class Tracker:
 
         # Initialize the map as a dictionary to store tile information
         self.map: Dict[Tuple[int, int], Dict[str, any]] = {}
-        self.particle_filter = ParticleFilter(n_particles=500)
+        self.particle_filter = ParticleFilter(n_particles=100)
         self.particle_filter.reset(self.x, self.y, self.theta)
 
         # Subscribe to wheel encoder topics
@@ -148,6 +148,7 @@ class Tracker:
 
             prev_x, prev_y, prev_theta = self.x, self.y, self.theta
 
+            
             self.particle_filter.calculate_weights()
             self.particle_filter.normalize()
             self.particle_filter.estimate()
@@ -163,3 +164,4 @@ class Tracker:
     @staticmethod
     def _wrap_angle(angle_rad: float) -> float:
         return (angle_rad + math.pi) % (2.0 * math.pi) - math.pi
+            

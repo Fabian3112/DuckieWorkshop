@@ -5,7 +5,7 @@ from std_msgs.msg import String
 
 class PIDController:
 
-    def __init__(self, Kp=9, Ki=0.0, Kd=5, vehicle_name=None):
+    def __init__(self, Kp=6, Ki=0.0, Kd=4, vehicle_name=None):
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
