@@ -15,6 +15,7 @@ import threading
 from Robot.tracking.ParticleFilter import ParticleFilter
 from Robot.tracking.LaneSegment import LaneSegment, TileType
 from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import Empty
 
 
 class Tracker:
@@ -77,6 +78,10 @@ class Tracker:
         map_topic = f"/{vehicle_name}/map_image"
         self.map_publisher = rospy.Publisher(map_topic, CompressedImage, queue_size=1)
 
+        # Reset the map from the web frontend; the run loop does the actual reset
+        self._reset_requested = False
+        rospy.Subscriber(f"/{vehicle_name}/map_reset", Empty, self.callback_reset, queue_size=1)
+
         threading.Thread(target=self.run, daemon=True).start()
 
 
@@ -87,6 +92,15 @@ class Tracker:
     def callback_right(self, msg: WheelEncoderStamped):
         self._right_tick = int(msg.data)
         self._update_position()
+
+    def callback_reset(self, msg: Empty):
+        self._reset_requested = True
+
+    def reset(self):
+        self.x = 0.0
+        self.y = 0.15
+        self.theta = 0.0
+        self.particle_filter.reset(self.x, self.y, self.theta)
 
     def _update_position(self):
         if self._left_tick is None or self._right_tick is None:
@@ -140,7 +154,13 @@ class Tracker:
 
         while not rospy.is_shutdown():
             time.sleep(0.1)
-            
+
+            if self._reset_requested:
+                self._reset_requested = False
+                self.reset()
+                prev_x, prev_y, prev_theta = self.x, self.y, self.theta
+                rospy.loginfo("Map reset, starting a new map")
+
             distance = math.sqrt((self.x - prev_x) ** 2 + (self.y - prev_y) ** 2)
             rotation = self._wrap_angle(self.theta - prev_theta)
 

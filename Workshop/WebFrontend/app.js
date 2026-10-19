@@ -18,7 +18,8 @@ const sliderDefinitions = {
   pid: [
     { key: "p", label: "P", min: 0, max: 20, step: 0.05, value: 6.0 },
     { key: "i", label: "I", min: 0, max: 5, step: 0.01, value: 0.0 },
-    { key: "d", label: "D", min: 0, max: 5, step: 0.01, value: 0.1 }
+    { key: "d", label: "D", min: 0, max: 5, step: 0.01, value: 0.1 },
+    { key: "speed", label: "Speed", min: 0, max: 1, step: 0.01, value: 0.2 }
   ]
 };
 

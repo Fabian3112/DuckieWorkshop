@@ -19,6 +19,7 @@ const elements = {
   connectButton: document.getElementById("connectButton"),
   fitButton: document.getElementById("fitButton"),
   resetButton: document.getElementById("resetButton"),
+  resetMapButton: document.getElementById("resetMapButton"),
   info: document.getElementById("mapInfo"),
   frame: document.getElementById("mapFrame"),
   canvas: document.getElementById("mapCanvas")
@@ -46,6 +47,10 @@ function getEndpoint() {
 
 function getMapTopic() {
   return `/${state.robotName}/map_image`;
+}
+
+function getMapResetTopic() {
+  return `/${state.robotName}/map_reset`;
 }
 
 function setStatus(status) {
@@ -111,6 +116,20 @@ function resetMap() {
   state.offsetX = 0;
   state.offsetY = 0;
   drawMap();
+}
+
+function publishMapReset() {
+  if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+    elements.info.textContent = "Not connected, the map could not be reset.";
+    return;
+  }
+
+  const topic = getMapResetTopic();
+  state.socket.send(JSON.stringify({ op: "advertise", topic, type: "std_msgs/Empty" }));
+  state.socket.send(JSON.stringify({ op: "publish", topic, msg: {} }));
+
+  state.hasFittedImage = false;
+  elements.info.textContent = "Map reset sent. The robot starts a new map from its current position.";
 }
 
 function getImageMimeType(message) {
@@ -239,6 +258,7 @@ function initialize() {
 elements.connectButton.addEventListener("click", connect);
 elements.fitButton.addEventListener("click", fitMap);
 elements.resetButton.addEventListener("click", resetMap);
+elements.resetMapButton.addEventListener("click", publishMapReset);
 
 elements.frame.addEventListener("wheel", (event) => {
   event.preventDefault();
