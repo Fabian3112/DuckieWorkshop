@@ -75,17 +75,7 @@ class Robot:
         self.is_running = False
         self.method_blocked = False
 
-        crop_bounds = {}
-        crop_bounds['top_left_x'] = self.top_left_x 
-        crop_bounds['top_left_y'] = self.top_left_y 
-        crop_bounds['top_right_x'] = self.top_right_x
-        crop_bounds['top_right_y'] = self.top_right_y
-        crop_bounds['bottom_left_x'] = self.bottom_left_x 
-        crop_bounds['bottom_left_y'] = self.bottom_left_y
-        crop_bounds['bottom_right_x'] = self.bottom_right_x
-        crop_bounds['bottom_right_y'] = self.bottom_right_y
-
-        self.duckie_detector = DuckieDetector(crop_bounds, vehicle_name=self.vehicle_name)
+        self.duckie_detector = DuckieDetector(vehicle_name=self.vehicle_name)
         self.detect_duckies = self.duckie_detector.detect_duckies
         
         print("initialising ros publishers")
@@ -195,9 +185,6 @@ class Robot:
         
         #print("starting lane following")
         
-        detected_duckies = self.detect_duckies(image)
-        self.duckie = len(detected_duckies) > 0
-
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         self.image_hsv = hsv_img
         
@@ -206,6 +193,10 @@ class Robot:
         
         debug_img = self.crop_image(image)
         self.image_croped = debug_img
+
+        # before the lane detection draws into debug_img
+        detected_duckies = self.detect_duckies(croped_image, debug_img)
+        self.duckie = len(detected_duckies) > 0
 
         #print(f'original image {hsv_img.shape} croped {croped_image.shape}')
 

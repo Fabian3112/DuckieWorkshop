@@ -1,14 +1,14 @@
 // Must match the defaults in Robot/duckie_detector.py. OpenCV hue goes from 0 to 180.
-// Red is at both ends of the hue circle, so there are two hue ranges.
+// Hue may wrap: if low is bigger than high, everything above low or below high counts.
+// Red is at both ends of the hue circle, so the default wraps.
 const hsvDefinitions = [
-  { key: "h1", label: "Hue 1", min: 0, max: 180, low: 0, high: 10 },
-  { key: "h2", label: "Hue 2", min: 0, max: 180, low: 170, high: 180 },
+  { key: "h", label: "Hue", min: 0, max: 180, low: 170, high: 10, wrap: true },
   { key: "s", label: "Sat", min: 0, max: 255, low: 120, high: 255 },
   { key: "v", label: "Val", min: 0, max: 255, low: 80, high: 255 }
 ];
 
 const shapeDefinitions = [
-  { key: "min_area", label: "Min size", min: 0, max: 10000, step: 50, value: 1500 }
+  { key: "min_area", label: "Min size", min: 0, max: 5000, step: 10, value: 300 }
 ];
 
 const elements = {
@@ -151,13 +151,18 @@ function makeDualRangeSlider(definition) {
     const lowPercent = ((low - min) / (max - min)) * 100;
     const highPercent = ((high - min) / (max - min)) * 100;
 
-    track.style.background = `linear-gradient(to right, #dbe7f8 0% ${lowPercent}%, #1d4ed8 ${lowPercent}% ${highPercent}%, #dbe7f8 ${highPercent}% 100%)`;
+    if (low <= high) {
+      track.style.background = `linear-gradient(to right, #dbe7f8 0% ${lowPercent}%, #1d4ed8 ${lowPercent}% ${highPercent}%, #dbe7f8 ${highPercent}% 100%)`;
+    } else {
+      // wrapped range: selected from 0 to high and from low to the end
+      track.style.background = `linear-gradient(to right, #1d4ed8 0% ${highPercent}%, #dbe7f8 ${highPercent}% ${lowPercent}%, #1d4ed8 ${lowPercent}% 100%)`;
+    }
     lowOutput.textContent = `L:${low}`;
     highOutput.textContent = `H:${high}`;
   }
 
   lowInput.addEventListener("input", () => {
-    if (Number(lowInput.value) > Number(highInput.value)) {
+    if (!definition.wrap && Number(lowInput.value) > Number(highInput.value)) {
       lowInput.value = highInput.value;
     }
     updateTrackAndValues();
@@ -165,7 +170,7 @@ function makeDualRangeSlider(definition) {
   });
 
   highInput.addEventListener("input", () => {
-    if (Number(highInput.value) < Number(lowInput.value)) {
+    if (!definition.wrap && Number(highInput.value) < Number(lowInput.value)) {
       highInput.value = lowInput.value;
     }
     updateTrackAndValues();
