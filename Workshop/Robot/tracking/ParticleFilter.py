@@ -165,6 +165,7 @@ class ParticleFilter:
 
         points_x_dict = {}
         points_y_dict = {}
+        points_theta_dict = {}
 
 
 
@@ -173,12 +174,15 @@ class ParticleFilter:
             if key not in points_x_dict:
                 points_x_dict[key] = np.array([point[0] for point in p.current_tile.points])
                 points_y_dict[key] = np.array([point[1] for point in p.current_tile.points])
+                points_theta_dict[key] = np.array([point[2] for point in p.current_tile.points])
 
         
             points_x = points_x_dict[key]
             points_y = points_y_dict[key]
+            points_theta = points_theta_dict[key]
 
-            distances = (points_x - p.x) ** 2 + (points_y - p.y) ** 2
+            distances = (points_x - p.x) ** 2 + (points_y - p.y) ** 2 
+            + ((points_theta - p.theta) % (2 * math.pi)) ** 2
             min_distance_index = np.argmin(distances)
             min_distance = distances[min_distance_index]
             p.point = min_distance_index

@@ -89,6 +89,42 @@ class Mover:
 
 
     def forward(self, distance: float):
+
+        start_x = self.x
+        start_y = self.y
+
+        theta_start = self.theta
+
+        error = distance
+        previous_error = error
+        integral_error = 0.0
+
+        while abs(error) > 0.01 and not rospy.is_shutdown():
+            time.sleep(0.05)
+            error = distance - math.hypot(self.x - start_x, self.y - start_y)
+
+            kp = 1.0
+            kd = 0.5
+            ki = 0.1
+
+            max_v = 0.2
+            derivative_error = error - previous_error
+            integral_error += error
+
+            v = kp * error + kd * derivative_error + ki * integral_error
+            v = min(v, max_v)
+
+            
+            omega = theta_start - self.theta
+            self.publish_velocity(v, omega)
+
+            previous_error = error
+
+        self.publish_velocity(0.0, 0.0)  # stop the robot after reaching the goal
+        time.sleep(0.1)
+        self.publish_velocity(0.0, 0.0)  # stop the robot after reaching the goal
+
+    def forward_old(self, distance: float):
         self.goal_x = self.x + distance * math.cos(self.theta)
         self.goal_y = self.y + distance * math.sin(self.theta)
 
@@ -97,7 +133,8 @@ class Mover:
         previous_error = math.hypot(error_x, error_y)
         integral_error = 0.0
 
-        while math.hypot(error_x, error_y) > 0.01:
+        while math.hypot(error_x, error_y) > 0.01 and not rospy.is_shutdown() :
+            time.sleep(0.05)
             error_x = self.goal_x - self.x
             error_y = self.goal_y - self.y
 
@@ -122,14 +159,16 @@ class Mover:
         self.publish_velocity(0.0, 0.0)  # stop the robot after reaching the goal
         pass
 
-    def turn(self, angle_rad: float):
+    def turn(self, angle: float):
+        angle_rad = math.radians(angle)
         self.goal_theta = self._wrap_angle(self.theta + angle_rad)
 
         error_theta = self._wrap_angle(self.goal_theta - self.theta)
         previous_error = error_theta
         integral_error = 0.0
 
-        while abs(error_theta) > math.radians(5.0):
+        while abs(error_theta) > math.radians(5.0) and not rospy.is_shutdown():
+            time.sleep(0.05)
             kp = 1.0
             kd = 0.5
             ki = 0.1
@@ -154,6 +193,12 @@ class Mover:
     @staticmethod
     def _wrap_angle(angle_rad: float) -> float:
         return (angle_rad + math.pi) % (2.0 * math.pi) - math.pi
+
+    def publish_velocity(self, v: float, omega: float):
+        twist_msg = Twist2DStamped()
+        twist_msg.v = v
+        twist_msg.omega = omega
+        self.velocity_publisher.publish(twist_msg)
         
 
 

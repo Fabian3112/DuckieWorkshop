@@ -7,6 +7,7 @@ from Robot.pid_controller import PIDController
 from Robot.duckie_detector import DuckieDetector
 from Robot.crossway_detector import CrosswayDetector, CrosswayType
 from Robot.move import Mover
+from Robot.tracker import Tracker
 from duckietown_msgs.msg import Twist2DStamped
 from std_msgs.msg import Int32
 

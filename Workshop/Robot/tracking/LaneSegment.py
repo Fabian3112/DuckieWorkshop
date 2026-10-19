@@ -41,6 +41,13 @@ class LaneSegment:
 
     def _get_points_fast(self,type: TileType = None, orientation: float = None, map_position: Tuple[float, float] = (0, 0)):
 
+        if type is None:
+            type = self.type
+        if orientation is None:
+            orientation = self.orientation
+        if map_position is None:
+            map_position = self.map_position
+
         if (type, orientation) not in points_dict:
             print(f"Generating points for type {type.name} and orientation {math.degrees(orientation)} degrees")
             points_dict[(type, orientation)] = self._get_points(type=type, orientation=orientation, map_position=(0,0))
@@ -98,6 +105,18 @@ class LaneSegment:
         # Apply offset to all points
         x_rotated = [x + offset_x for x in x_rotated]
         y_rotated = [y + offset_y for y in y_rotated]
+
+
+        if type == TileType.LeftTurn:
+            start_theta = orientation
+            step = math.pi / 2  / 20
+            theta = [(start_theta + step * i) % (2 * math.pi) for i in range(20)]
+
+        
+        if type == TileType.RightTurn:
+            start_theta = orientation
+            step = math.pi / 2  / 20
+            theta = [(start_theta - step * i) % (2 * math.pi) for i in range(20)]
 
         return list(zip(x_rotated, y_rotated, theta))
 
@@ -159,7 +178,7 @@ class LaneSegment:
         min_y = math.floor(min(ys) / 60) * 60
         max_y = math.ceil(max(ys) / 60) * 60
 
-        print(f"Drawing LaneSegment with min_x: {min_x}, max_x: {max_x}, min_y: {min_y}, max_y: {max_y}")
+        #print(f"Drawing LaneSegment with min_x: {min_x}, max_x: {max_x}, min_y: {min_y}, max_y: {max_y}")
 
         # Create a blank image with some padding
         pad = 10
