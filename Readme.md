@@ -15,7 +15,7 @@ Go into folder
 
 Build Docker (requires Internet Connection and will download for some time)
 ```docker build -t duckieworkshop:latest . ```
-```docker run --network=host --name duckieworkshop duckieworkshop:latest```
+```docker run -it --network=host --name duckieworkshop duckieworkshop:latest```
 
 Start Docker container
 ```docker start -i duckieworkshop```
