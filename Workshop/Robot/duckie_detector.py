@@ -22,9 +22,8 @@ class DuckieDetector:
         self.lightness_l = 80
         self.lightness_h = 255
 
-        # A blob counts as a duck when it is big enough and not flat like a stop line
+        # A blob counts as a duck when it is big enough
         self.min_area = 1500        # pixels in the half size image (320 x 240)
-        self.min_aspect = 0.5       # blob height / blob width, a stop line is much flatter
 
         # Only look in front of the robot: middle of the image, not the sky
         self.roi_x_low = 0.2
@@ -58,8 +57,6 @@ class DuckieDetector:
             self.lightness_h = int(data["v_high"])
             if "min_area" in data:
                 self.min_area = int(data["min_area"])
-            if "min_aspect" in data:
-                self.min_aspect = float(data["min_aspect"])
             if "evade" in data:
                 self.evade = bool(data["evade"])
         except Exception as exc:
@@ -102,7 +99,7 @@ class DuckieDetector:
 
             cx, cy = centroids[i]
             in_front = roi_x1 <= cx <= roi_x2 and roi_y1 <= cy <= roi_y2
-            is_duck = in_front and area >= self.min_area and h / w >= self.min_aspect
+            is_duck = in_front and area >= self.min_area
 
             candidates.append((x, y, w, h, area, is_duck))
             if is_duck:

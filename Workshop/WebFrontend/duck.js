@@ -8,8 +8,7 @@ const hsvDefinitions = [
 ];
 
 const shapeDefinitions = [
-  { key: "min_area", label: "Min size", min: 0, max: 10000, step: 50, value: 1500 },
-  { key: "min_aspect", label: "Min h/w", min: 0, max: 2, step: 0.05, value: 0.5 }
+  { key: "min_area", label: "Min size", min: 0, max: 10000, step: 50, value: 1500 }
 ];
 
 const elements = {
