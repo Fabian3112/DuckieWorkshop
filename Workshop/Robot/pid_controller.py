@@ -29,6 +29,8 @@ class PIDController:
             self.Kp = float(data["p"])
             self.Ki = float(data["i"])
             self.Kd = float(data["d"])
+            if "speed" in data:
+                self.MAX_VEL = min(max(float(data["speed"]), 0.0), 1.0)
         except Exception as exc:
             rospy.logwarn_throttle(2.0, f"Failed parsing PID JSON: {exc}")
 
@@ -41,7 +43,7 @@ class PIDController:
         derivative = error - self.previous_error
 
         omega = -((self.Kp * error) + (self.Ki * self.integral) + (self.Kd * derivative))
-        v = max(0.05, self.MAX_VEL - abs(omega)*0.1)
+        v = max(min(0.05, self.MAX_VEL), self.MAX_VEL - abs(omega)*0.1)
 
         self.previous_error = error
         #print(f'error was : {error}')
