@@ -132,11 +132,11 @@ class CrosswayDetector:
         #    return True,0
 
         #print(f'crosswadetection done {False} {0} {0}')        
-        return False,0, {'left': False, 'forward': False, 'right': False}
+        return False,0, {'left': False, 'straight': False, 'right': False}
 
     def compute_pid(self, error):
         self.integral += error
-        self.integral = max(5,self.integral)
+        self.integral = max(-5, min(5, self.integral))
         derivative = error - self.previous_error
 
         if(error >= self.previous_error - 0.001):
