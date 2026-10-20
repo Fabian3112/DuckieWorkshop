@@ -11,15 +11,13 @@ class DuckieDetector:
     """Find rubber ducks in the cropped camera image by their colour (HSV)."""
 
     def __init__(self, vehicle_name=None):
-        # OpenCV hue goes from 0 to 180. If hue_l is bigger than hue_h the range
-        # wraps around: everything above hue_l or below hue_h counts.
+        # Ducks can have different colours. A pixel counts if it matches any of them.
+        # OpenCV hue goes from 0 to 180. If h_low is bigger than h_high the range
+        # wraps around: everything above h_low or below h_high counts.
         # Red sits at both ends of the hue circle, so the default wraps.
-        self.hue_l = 170
-        self.hue_h = 10
-        self.saturation_l = 120
-        self.saturation_h = 255
-        self.lightness_l = 80
-        self.lightness_h = 255
+        self.colours = [
+            {'h_low': 170, 'h_high': 10, 's_low': 120, 's_high': 255, 'v_low': 80, 'v_high': 255},
+        ]
 
         # A blob counts as a duck when it has at least this many pixels
         self.min_area = 300
@@ -42,12 +40,8 @@ class DuckieDetector:
     def settings_callback(self, msg):
         try:
             data = json.loads(msg.data)
-            self.hue_l = int(data["h_low"])
-            self.hue_h = int(data["h_high"])
-            self.saturation_l = int(data["s_low"])
-            self.saturation_h = int(data["s_high"])
-            self.lightness_l = int(data["v_low"])
-            self.lightness_h = int(data["v_high"])
+            keys = ['h_low', 'h_high', 's_low', 's_high', 'v_low', 'v_high']
+            self.colours = [{key: int(colour[key]) for key in keys} for colour in data["colours"]]
             if "min_area" in data:
                 self.min_area = int(data["min_area"])
             if "trigger_line" in data:
@@ -57,19 +51,21 @@ class DuckieDetector:
         except Exception as exc:
             rospy.logwarn_throttle(2.0, f"Failed parsing duck HSV JSON: {exc}")
 
-    def get_mask(self, hsv_image):
-        if self.hue_l <= self.hue_h:
-            return cv2.inRange(hsv_image,
-                               (self.hue_l, self.saturation_l, self.lightness_l),
-                               (self.hue_h, self.saturation_h, self.lightness_h))
+    def get_colour_mask(self, hsv_image, colour):
+        low = (colour['h_low'], colour['s_low'], colour['v_low'])
+        high = (colour['h_high'], colour['s_high'], colour['v_high'])
+        if colour['h_low'] <= colour['h_high']:
+            return cv2.inRange(hsv_image, low, high)
 
-        # wrapped hue range: from hue_l up to 180 and from 0 up to hue_h
-        mask = cv2.inRange(hsv_image,
-                           (self.hue_l, self.saturation_l, self.lightness_l),
-                           (180, self.saturation_h, self.lightness_h))
-        mask |= cv2.inRange(hsv_image,
-                            (0, self.saturation_l, self.lightness_l),
-                            (self.hue_h, self.saturation_h, self.lightness_h))
+        # wrapped hue range: from h_low up to 180 and from 0 up to h_high
+        mask = cv2.inRange(hsv_image, low, (180, high[1], high[2]))
+        mask |= cv2.inRange(hsv_image, (0, low[1], low[2]), high)
+        return mask
+
+    def get_mask(self, hsv_image):
+        mask = np.zeros(hsv_image.shape[:2], dtype=np.uint8)
+        for colour in self.colours:
+            mask |= self.get_colour_mask(hsv_image, colour)
         return mask
 
     def detect_duckies(self, hsv_image, image):

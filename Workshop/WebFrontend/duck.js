@@ -1,11 +1,16 @@
 // Must match the defaults in Robot/duckie_detector.py. OpenCV hue goes from 0 to 180.
 // Hue may wrap: if low is bigger than high, everything above low or below high counts.
 // Red is at both ends of the hue circle, so the default wraps.
+// Every colour is one HSV range, a pixel counts if it matches any of the colours.
 const hsvDefinitions = [
-  { key: "h", label: "Hue", min: 0, max: 180, low: 170, high: 10, wrap: true },
-  { key: "s", label: "Sat", min: 0, max: 255, low: 120, high: 255 },
-  { key: "v", label: "Val", min: 0, max: 255, low: 80, high: 255 }
+  { key: "h", label: "Hue", min: 0, max: 180, wrap: true },
+  { key: "s", label: "Sat", min: 0, max: 255 },
+  { key: "v", label: "Val", min: 0, max: 255 }
 ];
+
+const defaultColour = { h_low: 170, h_high: 10, s_low: 120, s_high: 255, v_low: 80, v_high: 255 };
+const maxColours = 6;
+const storageKey = "duckColours";
 
 const shapeDefinitions = [
   { key: "min_area", label: "Min size", min: 0, max: 5000, step: 10, value: 300 },
@@ -19,7 +24,8 @@ const elements = {
   image: document.getElementById("duckImage"),
   placeholder: document.getElementById("duckPlaceholder"),
   publishButton: document.getElementById("publishButton"),
-  hsvControls: document.getElementById("hsvControls"),
+  colourList: document.getElementById("colourList"),
+  addColourButton: document.getElementById("addColourButton"),
   shapeControls: document.getElementById("shapeControls"),
   evadeActive: document.getElementById("evadeActive")
 };
@@ -29,7 +35,9 @@ const state = {
   wsPort: 9001,
   socket: null,
   advertised: false,
-  publishTimer: null
+  publishTimer: null,
+  online: false,
+  colourBoxes: []
 };
 
 function inferRobotNameFromHost() {
@@ -59,20 +67,55 @@ function setStatus(status) {
   elements.status.textContent = status;
   elements.status.className = `status status-${status}`;
 
-  const enabled = status === "online";
+  state.online = status === "online";
+  updateControls();
+}
+
+function updateControls() {
+  const enabled = state.online;
   elements.publishButton.disabled = !enabled;
   elements.evadeActive.disabled = !enabled;
+  elements.addColourButton.disabled = !enabled || state.colourBoxes.length >= maxColours;
   document.querySelectorAll("input[type='range']").forEach((input) => {
     input.disabled = !enabled;
   });
+  state.colourBoxes.forEach((box, index) => {
+    box.legend.textContent = `Colour ${index + 1}`;
+    box.removeButton.disabled = !enabled || state.colourBoxes.length <= 1;
+  });
+}
+
+function readColour(box) {
+  const colour = {};
+  hsvDefinitions.forEach((definition) => {
+    colour[`${definition.key}_low`] = Number(box.inputs[`${definition.key}_low`].value);
+    colour[`${definition.key}_high`] = Number(box.inputs[`${definition.key}_high`].value);
+  });
+  return colour;
+}
+
+function saveColours() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state.colourBoxes.map(readColour)));
+  } catch (error) {
+    // storage not available, the colours are just not remembered
+  }
+}
+
+function loadColours() {
+  try {
+    const colours = JSON.parse(localStorage.getItem(storageKey));
+    if (Array.isArray(colours) && colours.length > 0) {
+      return colours.slice(0, maxColours);
+    }
+  } catch (error) {
+    // nothing saved yet
+  }
+  return [defaultColour];
 }
 
 function getSettings() {
-  const values = {};
-  hsvDefinitions.forEach((definition) => {
-    values[`${definition.key}_low`] = Number(document.getElementById(`duck-${definition.key}_low`).value);
-    values[`${definition.key}_high`] = Number(document.getElementById(`duck-${definition.key}_high`).value);
-  });
+  const values = { colours: state.colourBoxes.map(readColour) };
   shapeDefinitions.forEach((definition) => {
     values[definition.key] = Number(document.getElementById(`duck-${definition.key}`).value);
   });
@@ -91,6 +134,7 @@ function publishSettings() {
     state.advertised = true;
   }
   state.socket.send(JSON.stringify({ op: "publish", topic, msg: { data: JSON.stringify(getSettings()) } }));
+  saveColours();
 }
 
 // Publish while the slider is moving, but at most every 100 ms
@@ -104,7 +148,7 @@ function schedulePublish() {
   }, 100);
 }
 
-function makeDualRangeSlider(definition) {
+function makeDualRangeSlider(definition, idPrefix, low, high, onChange) {
   const row = document.createElement("div");
   row.className = "slider-row slider-row-dual";
 
@@ -119,20 +163,20 @@ function makeDualRangeSlider(definition) {
 
   const lowInput = document.createElement("input");
   lowInput.type = "range";
-  lowInput.id = `duck-${definition.key}_low`;
+  lowInput.id = `${idPrefix}-${definition.key}_low`;
   lowInput.min = definition.min;
   lowInput.max = definition.max;
   lowInput.step = 1;
-  lowInput.value = definition.low;
+  lowInput.value = low;
   lowInput.disabled = true;
 
   const highInput = document.createElement("input");
   highInput.type = "range";
-  highInput.id = `duck-${definition.key}_high`;
+  highInput.id = `${idPrefix}-${definition.key}_high`;
   highInput.min = definition.min;
   highInput.max = definition.max;
   highInput.step = 1;
-  highInput.value = definition.high;
+  highInput.value = high;
   highInput.disabled = true;
 
   const valuesWrap = document.createElement("div");
@@ -167,7 +211,7 @@ function makeDualRangeSlider(definition) {
       lowInput.value = highInput.value;
     }
     updateTrackAndValues();
-    schedulePublish();
+    onChange();
   });
 
   highInput.addEventListener("input", () => {
@@ -175,7 +219,7 @@ function makeDualRangeSlider(definition) {
       highInput.value = lowInput.value;
     }
     updateTrackAndValues();
-    schedulePublish();
+    onChange();
   });
 
   updateTrackAndValues();
@@ -183,7 +227,79 @@ function makeDualRangeSlider(definition) {
   rangeWrap.append(track, lowInput, highInput);
   valuesWrap.append(lowOutput, highOutput);
   row.append(title, rangeWrap, valuesWrap);
-  return row;
+  return { row, lowInput, highInput };
+}
+
+// Shows roughly what the selected colour looks like
+function updateSwatch(box) {
+  const colour = readColour(box);
+  let hue = (colour.h_low + colour.h_high) / 2;
+  if (colour.h_low > colour.h_high) {
+    hue = (hue + 90) % 180;
+  }
+  const saturation = (colour.s_low + colour.s_high) / 2 / 255;
+  const value = (colour.v_low + colour.v_high) / 2 / 255;
+  // HSV to HSL for CSS
+  const lightness = value * (1 - saturation / 2);
+  const hslSaturation = lightness === 0 || lightness === 1 ? 0 : (value - lightness) / Math.min(lightness, 1 - lightness);
+  box.swatch.style.background = `hsl(${hue * 2}, ${Math.round(hslSaturation * 100)}%, ${Math.round(lightness * 100)}%)`;
+}
+
+function addColour(colour) {
+  const id = `duck-colour-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+
+  const fieldset = document.createElement("fieldset");
+  fieldset.className = "colour-box";
+
+  const legend = document.createElement("legend");
+  const swatch = document.createElement("span");
+  swatch.className = "colour-swatch";
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "button button-secondary colour-remove";
+  removeButton.textContent = "Remove";
+
+  const header = document.createElement("div");
+  header.className = "colour-header";
+  header.append(swatch, removeButton);
+
+  const stack = document.createElement("div");
+  stack.className = "slider-stack";
+
+  const box = { fieldset, legend, swatch, removeButton, inputs: {} };
+
+  hsvDefinitions.forEach((definition) => {
+    const slider = makeDualRangeSlider(
+      definition,
+      id,
+      colour[`${definition.key}_low`],
+      colour[`${definition.key}_high`],
+      () => {
+        updateSwatch(box);
+        schedulePublish();
+      }
+    );
+    box.inputs[`${definition.key}_low`] = slider.lowInput;
+    box.inputs[`${definition.key}_high`] = slider.highInput;
+    stack.appendChild(slider.row);
+  });
+
+  removeButton.addEventListener("click", () => {
+    if (state.colourBoxes.length <= 1) {
+      return;
+    }
+    state.colourBoxes = state.colourBoxes.filter((other) => other !== box);
+    fieldset.remove();
+    updateControls();
+    publishSettings();
+  });
+
+  fieldset.append(legend, header, stack);
+  elements.colourList.appendChild(fieldset);
+  state.colourBoxes.push(box);
+  updateSwatch(box);
+  updateControls();
 }
 
 function makeSingleSlider(definition) {
@@ -216,9 +332,7 @@ function makeSingleSlider(definition) {
 }
 
 function mountSliders() {
-  hsvDefinitions.forEach((definition) => {
-    elements.hsvControls.appendChild(makeDualRangeSlider(definition));
-  });
+  loadColours().forEach((colour) => addColour({ ...defaultColour, ...colour }));
   shapeDefinitions.forEach((definition) => {
     elements.shapeControls.appendChild(makeSingleSlider(definition));
   });
@@ -251,6 +365,8 @@ function connect() {
 
   socket.onopen = () => {
     setStatus("online");
+    // the robot gets the colours shown on this page
+    publishSettings();
     socket.send(JSON.stringify({
       op: "subscribe",
       topic: getImageTopic(),
@@ -290,6 +406,13 @@ function bootstrap() {
 
 elements.publishButton.addEventListener("click", publishSettings);
 elements.evadeActive.addEventListener("change", publishSettings);
+elements.addColourButton.addEventListener("click", () => {
+  if (state.colourBoxes.length >= maxColours) {
+    return;
+  }
+  addColour(defaultColour);
+  publishSettings();
+});
 
 mountSliders();
 bootstrap();
