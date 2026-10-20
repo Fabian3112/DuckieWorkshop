@@ -38,6 +38,23 @@
       </section>
 
       <section class="card control-panel control-panel-right">
+        <div class="panel-heading">
+          <h2>Robot Program</h2>
+          <span id="programStatus" class="status status-offline">stopped</span>
+        </div>
+        <label class="checkbox-row">
+          <input id="optionIntersection" type="checkbox" />
+          <span>Drive through intersections</span>
+        </label>
+        <label class="checkbox-row">
+          <input id="optionDuckEvasion" type="checkbox" />
+          <span>Drive around ducks (otherwise stop in front of them)</span>
+        </label>
+        <div class="button-row button-row-large">
+          <button id="programButton" class="button button-primary" disabled>Start program</button>
+        </div>
+        <pre id="programOutput" class="log-output program-output"></pre>
+
         <h2>Robot Control</h2>
         <div class="button-row button-row-large">
           <button id="startButton" class="button button-success" disabled>Start Robot</button>

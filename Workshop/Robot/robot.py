@@ -46,8 +46,10 @@ class Robot:
 
 
         lane_detector = LaneDetector(vehicle_name=self.vehicle_name)
+        self.lane_detector = lane_detector
         self.detect_lane = lane_detector.calculate_lane_center
         pid_controller = PIDController(vehicle_name=self.vehicle_name)
+        self.lane_controller = pid_controller
         self.pid_controller = pid_controller.compute_control
     
         crossway_detector = CrosswayDetector()
@@ -109,6 +111,8 @@ class Robot:
         self.image_croped = np.zeros((400,400))
         self.redline = False
         self.drive_intersection = False
+        # used by the start button of the frontend: drive through intersections or just follow the lane
+        self.use_intersection = True
         self.intersection_possibilities = []        
 
         # duck evasion: these steps run one after another, then the robot follows the lane again
@@ -143,7 +147,7 @@ class Robot:
 
     def callback_start(self,msg):
         if msg.data == 1:
-            self.start(True)
+            self.start(self.use_intersection)
         else:
             self.stop()
 

@@ -37,7 +37,8 @@ const state = {
   advertised: false,
   publishTimer: null,
   online: false,
-  colourBoxes: []
+  colourBoxes: [],
+  saved: null
 };
 
 function inferRobotNameFromHost() {
@@ -94,15 +95,41 @@ function readColour(box) {
   return colour;
 }
 
-function saveColours() {
+// The robot stores the last settings (robot_server.py), the browser keeps a copy as a fallback
+function saveSettings() {
+  const settings = getSettings();
   try {
-    localStorage.setItem(storageKey, JSON.stringify(state.colourBoxes.map(readColour)));
+    localStorage.setItem(storageKey, JSON.stringify(settings.colours));
   } catch (error) {
-    // storage not available, the colours are just not remembered
+    // storage not available, the colours are just not remembered in this browser
+  }
+  fetch("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ duck: settings })
+  }).catch(() => {
+    // older server without settings storage
+  });
+}
+
+async function loadSavedSettings() {
+  try {
+    const response = await fetch("/api/settings", { cache: "no-store" });
+    if (response.ok) {
+      const duck = (await response.json()).duck;
+      if (duck && typeof duck === "object") {
+        state.saved = duck;
+      }
+    }
+  } catch (error) {
+    // nothing saved on the robot, use the browser copy
   }
 }
 
 function loadColours() {
+  if (Array.isArray(state.saved?.colours) && state.saved.colours.length > 0) {
+    return state.saved.colours.slice(0, maxColours);
+  }
   try {
     const colours = JSON.parse(localStorage.getItem(storageKey));
     if (Array.isArray(colours) && colours.length > 0) {
@@ -134,7 +161,7 @@ function publishSettings() {
     state.advertised = true;
   }
   state.socket.send(JSON.stringify({ op: "publish", topic, msg: { data: JSON.stringify(getSettings()) } }));
-  saveColours();
+  saveSettings();
 }
 
 // Publish while the slider is moving, but at most every 100 ms
@@ -315,12 +342,13 @@ function makeSingleSlider(definition) {
   input.min = definition.min;
   input.max = definition.max;
   input.step = definition.step;
-  input.value = definition.value;
+  const saved = Number(state.saved?.[definition.key]);
+  input.value = Number.isFinite(saved) ? saved : definition.value;
   input.disabled = true;
 
   const output = document.createElement("output");
   output.htmlFor = input.id;
-  output.textContent = String(definition.value);
+  output.textContent = input.value;
 
   input.addEventListener("input", () => {
     output.textContent = input.value;
@@ -414,7 +442,15 @@ elements.addColourButton.addEventListener("click", () => {
   publishSettings();
 });
 
-mountSliders();
-bootstrap();
-setStatus("offline");
-connect();
+async function init() {
+  await loadSavedSettings();
+  if (typeof state.saved?.evade === "boolean") {
+    elements.evadeActive.checked = state.saved.evade;
+  }
+  mountSliders();
+  bootstrap();
+  setStatus("offline");
+  connect();
+}
+
+init();
