@@ -124,7 +124,7 @@ class Mover:
         time.sleep(0.1)
         self.publish_velocity(0.0, 0.0)  # stop the robot after reaching the goal
         
-    def turn(self, angle: float):
+    def turn(self, angle: float, pause: float = 3.0):
         angle_rad = math.radians(angle)
         self.goal_theta = self._wrap_angle(self.theta + angle_rad)
 
@@ -171,7 +171,7 @@ class Mover:
         self.publish_velocity(0.0, 0.0)  # stop the robot after reaching the goal
         time.sleep(0.1)
         self.publish_velocity(0.0, 0.0)  # stop the robot after reaching the goal
-        time.sleep(3)
+        time.sleep(pause)
         print(f'turn error after: {math.degrees(self._wrap_angle(self.goal_theta - self.theta))}')
 
     @staticmethod

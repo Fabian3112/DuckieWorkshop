@@ -10,6 +10,7 @@ from Robot.tracker_2 import Tracker
 from duckietown_msgs.msg import Twist2DStamped
 from std_msgs.msg import Int32
 import time
+import threading
 
 
 import rospy
@@ -120,6 +121,8 @@ class Robot:
             ('forward', 0.2),
             ('right', 45),
         ]
+        self.duck_pause = 0.3       # seconds to wait after each turn of the manoeuvre
+        self.evading = False
         self.duck_cooldown = 2.0    # seconds after an evasion in which ducks are ignored
         self._last_evasion = 0.0
         
@@ -154,16 +157,24 @@ class Robot:
         return self.duckie
 
     def evade_duckie(self):
+        # runs in its own thread, so camera images (and the debug views) keep coming during the manoeuvre
         print('duck ahead, evading to the left')
-        self.publish_velocity(0.0, 0.0)
-        moves = {'left': self.left, 'right': self.right, 'forward': self.forward}
-        for move, value in self.duck_manoeuvre:
-            # stop button pressed during the manoeuvre
-            if not self.is_running:
-                break
-            moves[move](value)
-        self.publish_velocity(0.0, 0.0)
-        self._last_evasion = time.time()
+        try:
+            self.publish_velocity(0.0, 0.0)
+            for move, value in self.duck_manoeuvre:
+                # stop button pressed during the manoeuvre
+                if not self.is_running:
+                    break
+                if move == 'left':
+                    self.left(value, pause=self.duck_pause)
+                elif move == 'right':
+                    self.right(value, pause=self.duck_pause)
+                else:
+                    self.forward(value)
+            self.publish_velocity(0.0, 0.0)
+        finally:
+            self._last_evasion = time.time()
+            self.evading = False
         print('duck evaded, back to lane following')
 
     
@@ -179,11 +190,11 @@ class Robot:
             except:
                 self.method_blocked = False
 
-    def left(self,degrees):
-        self.turn(degrees)
+    def left(self, degrees, pause=3.0):
+        self.turn(degrees, pause)
 
-    def right(self,degrees):
-        self.turn(-degrees)
+    def right(self, degrees, pause=3.0):
+        self.turn(-degrees, pause)
 
 
     def follow_lane(self, image):
@@ -218,6 +229,12 @@ class Robot:
             lane_center = self.detect_lane(croped_image,debug_img)
 
         self.redline = is_crossway
+
+        # the duck manoeuvre is driving: only show the images, don't steer
+        if self.evading:
+            self.publish_image(debug_img)
+            return
+
         if is_crossway and self.drive_intersection:
             print('at crossway')
             if abs(crossway_heading_error) > 1:
@@ -250,7 +267,9 @@ class Robot:
 
         elif self.duckie and time.time() - self._last_evasion > self.duck_cooldown:
             if self.is_running and self.duckie_detector.evade:
-                self.evade_duckie()
+                self.evading = True
+                threading.Thread(target=self.evade_duckie, daemon=True).start()
+                self.publish_image(debug_img)
                 return
             # evasion switched off: stop in front of the duck
             self.v = 0.0
