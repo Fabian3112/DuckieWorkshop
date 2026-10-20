@@ -8,7 +8,8 @@ const hsvDefinitions = [
 ];
 
 const shapeDefinitions = [
-  { key: "min_area", label: "Min size", min: 0, max: 5000, step: 10, value: 300 }
+  { key: "min_area", label: "Min size", min: 0, max: 5000, step: 10, value: 300 },
+  { key: "trigger_line", label: "Trigger line", min: 0, max: 200, step: 1, value: 150 }
 ];
 
 const elements = {

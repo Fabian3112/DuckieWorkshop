@@ -24,6 +24,10 @@ class DuckieDetector:
         # A blob counts as a duck when it has at least this many pixels
         self.min_area = 300
 
+        # Only react when the duck is close: its lowest pixel must be below this row
+        # of the cropped image (0 = top/far away, 200 = bottom/right in front of the robot)
+        self.trigger_line = 150
+
         # True: the robot drives around detected ducks, False: it stops in front of them
         self.evade = True
 
@@ -46,6 +50,8 @@ class DuckieDetector:
             self.lightness_h = int(data["v_high"])
             if "min_area" in data:
                 self.min_area = int(data["min_area"])
+            if "trigger_line" in data:
+                self.trigger_line = int(data["trigger_line"])
             if "evade" in data:
                 self.evade = bool(data["evade"])
         except Exception as exc:
@@ -84,7 +90,7 @@ class DuckieDetector:
             if area < 20:
                 continue
 
-            is_duck = area >= self.min_area
+            is_duck = area >= self.min_area and y + h >= self.trigger_line
             candidates.append((x, y, w, h, area, is_duck))
             if is_duck:
                 duckies.append((int(x), int(y), int(w), int(h)))
@@ -100,6 +106,9 @@ class DuckieDetector:
         overlay = image.copy()
         overlay[mask > 0] = (255, 0, 255)
         view = cv2.addWeighted(image, 0.5, overlay, 0.5, 0)
+
+        width = view.shape[1]
+        cv2.line(view, (0, self.trigger_line), (width, self.trigger_line), (0, 200, 255), 1)
 
         for x, y, w, h, area, is_duck in candidates:
             color = (0, 255, 0) if is_duck else (160, 160, 160)

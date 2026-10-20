@@ -80,7 +80,7 @@
           <img id="duckImage" alt="Duck detection view: camera with matches on the left, mask on the right" />
           <p id="duckPlaceholder">No image received yet. The robot code must be running.</p>
         </div>
-        <p class="duck-info">Left: the robot's cropped image with matching pixels (pink) and found blobs with their size. Right: the colour mask. For Hue, a lower value above the upper value selects everything outside that range (useful for red).</p>
+        <p class="duck-info">Left: the robot's cropped image with matching pixels (pink) and found blobs with their size. A duck only counts once its bottom edge passes the orange trigger line (higher value = closer). Right: the colour mask. For Hue, a lower value above the upper value selects everything outside that range (useful for red).</p>
       </section>
 
       <section class="card duck-tuning-panel">
@@ -93,7 +93,7 @@
           <div class="slider-stack" id="hsvControls"></div>
         </fieldset>
         <fieldset>
-          <legend>Size</legend>
+          <legend>Size and distance</legend>
           <div class="slider-stack" id="shapeControls"></div>
         </fieldset>
         <label class="checkbox-row">
