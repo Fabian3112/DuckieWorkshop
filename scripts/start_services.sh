@@ -45,10 +45,12 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# duckietown_msgs is built by catkin_make in the dockerfile; only source it here.
+# ROS setup scripts read unset variables, so relax -u while sourcing them.
+set +u
 source /opt/ros/noetic/setup.bash
-cd ./Workshop/Duckietown_msg
-catkin_make
-source devel/setup.bash
+source /workspace/Workshop/Duckietown_msg/devel/setup.bash
+set -u
 
 jupyter lab \
   --ip=0.0.0.0 \
