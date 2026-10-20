@@ -26,7 +26,7 @@ class DuckieDetector:
         # of the cropped image (0 = top/far away, 200 = bottom/right in front of the robot)
         self.trigger_line = 150
 
-        # True: the robot drives around detected ducks, False: it stops in front of them
+        # True: the robot drives around detected ducks, False: it ignores them
         self.evade = True
 
         if vehicle_name is not None:

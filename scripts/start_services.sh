@@ -28,7 +28,8 @@ echo "[startup] BRIDGE_PATH=${BRIDGE_PATH:-/ros}"
 echo "[startup] FRONTEND_PORT=${FRONTEND_PORT}"
 echo "[startup] FRONTEND_DIR=${FRONTEND_DIR}"
 
-python3 -m http.server "${FRONTEND_PORT}" --bind 0.0.0.0 --directory "${FRONTEND_DIR}" >/tmp/frontend.log 2>&1 &
+# serves the frontend and lets it start/stop the robot program and store its parameters
+python3 ./Workshop/robot_server.py --port "${FRONTEND_PORT}" --directory "${FRONTEND_DIR}" >/tmp/frontend.log 2>&1 &
 frontend_pid=$!
 
 sleep 1

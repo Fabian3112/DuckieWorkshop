@@ -38,7 +38,13 @@ const elements = {
   whiteControls: document.getElementById("whiteControls"),
   pidControls: document.getElementById("pidControls"),
   clearLogButton: document.getElementById("clearLogButton"),
-  logOutput: document.getElementById("logOutput")
+  logOutput: document.getElementById("logOutput"),
+  shutdownButton: document.getElementById("shutdownButton"),
+  programStatus: document.getElementById("programStatus"),
+  programButton: document.getElementById("programButton"),
+  programOutput: document.getElementById("programOutput"),
+  optionIntersection: document.getElementById("optionIntersection"),
+  optionDuckEvasion: document.getElementById("optionDuckEvasion")
 };
 
 const state = {
@@ -52,8 +58,53 @@ const state = {
   subscribedCamera: false,
   advertisedTopics: new Set(),
   debounceTimers: new Map(),
-  topics: null
+  topics: null,
+  savedSettings: {},
+  program: { running: false, busy: false, reachable: false }
 };
+
+// The robot stores the last parameters (robot_server.py), so they survive page changes and restarts
+async function loadSavedSettings() {
+  try {
+    const response = await fetch("/api/settings", { cache: "no-store" });
+    if (response.ok) {
+      state.savedSettings = await response.json();
+    }
+  } catch (error) {
+    log("Could not load the saved parameters.");
+  }
+
+  ["yellow", "white", "pid"].forEach((section) => {
+    const saved = state.savedSettings[section];
+    if (!saved) {
+      return;
+    }
+    sliderDefinitions[section].forEach((definition) => {
+      const value = Number(saved[definition.key]);
+      if (Number.isFinite(value)) {
+        definition.value = Math.min(Math.max(value, definition.min), definition.max);
+      }
+    });
+  });
+
+  const start = state.savedSettings.start || {};
+  elements.optionIntersection.checked = Boolean(start.intersection);
+  elements.optionDuckEvasion.checked = state.savedSettings.duck?.evade ?? start.duck_evasion ?? true;
+}
+
+function saveSettings(sections) {
+  Object.assign(state.savedSettings, sections);
+  fetch("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(sections)
+  }).catch(() => log("Could not save the parameters on the robot."));
+}
+
+function withoutHeader(values) {
+  const { header, ...rest } = values;
+  return rest;
+}
 
 function getRobotName() {
   return state.robotName;
@@ -261,6 +312,7 @@ function connect() {
     log("WebSocket connected.");
     advertiseControlTopics();
     subscribeCamera();
+    publishSavedSettings();
   };
 
   socket.onclose = () => {
@@ -338,15 +390,30 @@ function publishHsvTopics() {
   if (!state.topics) {
     return;
   }
-  publish(state.topics.yellow, { data: JSON.stringify(getSectionValues("yellow")) });
-  publish(state.topics.white, { data: JSON.stringify(getSectionValues("white")) });
+  const yellow = getSectionValues("yellow");
+  const white = getSectionValues("white");
+  publish(state.topics.yellow, { data: JSON.stringify(yellow) });
+  publish(state.topics.white, { data: JSON.stringify(white) });
+  saveSettings({ yellow: withoutHeader(yellow), white: withoutHeader(white) });
 }
 
 function publishPidTopic() {
   if (!state.topics) {
     return;
   }
-  publish(state.topics.pid, { data: JSON.stringify(getSectionValues("pid")) });
+  const pid = getSectionValues("pid");
+  publish(state.topics.pid, { data: JSON.stringify(pid) });
+  saveSettings({ pid: withoutHeader(pid) });
+}
+
+// a robot program started in a notebook gets the saved parameters as well
+function publishSavedSettings() {
+  if (state.savedSettings.yellow || state.savedSettings.white) {
+    publishHsvTopics();
+  }
+  if (state.savedSettings.pid) {
+    publishPidTopic();
+  }
 }
 
 function publishStart(value) {
@@ -522,6 +589,106 @@ function bootstrap() {
   updateLabels();
 }
 
+function showProgram(status) {
+  state.program.running = Boolean(status.running);
+  state.program.reachable = true;
+
+  let label = state.program.running ? "running" : "stopped";
+  if (state.program.busy) {
+    label = state.program.running ? "stopping" : "starting";
+  }
+  elements.programStatus.textContent = label;
+  elements.programStatus.className = `status status-${state.program.running ? "online" : state.program.busy ? "connecting" : "offline"}`;
+
+  elements.programButton.textContent = state.program.running ? "Stop Robot Program" : "Start Robot Program";
+  elements.programButton.className = `button ${state.program.running ? "button-danger" : "button-primary"}`;
+  elements.programButton.disabled = state.program.busy;
+
+  // the options are chosen when the program starts
+  elements.optionIntersection.disabled = state.program.running || state.program.busy;
+  elements.optionDuckEvasion.disabled = state.program.running || state.program.busy;
+  if (state.program.running && status.options) {
+    elements.optionIntersection.checked = Boolean(status.options.intersection);
+    elements.optionDuckEvasion.checked = Boolean(status.options.duck_evasion);
+  }
+
+  const output = (status.output || []).join("\n");
+  if (elements.programOutput.textContent !== output) {
+    elements.programOutput.textContent = output;
+    elements.programOutput.scrollTop = elements.programOutput.scrollHeight;
+  }
+}
+
+async function refreshProgram() {
+  try {
+    const response = await fetch("/api/robot", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+    showProgram(await response.json());
+  } catch (error) {
+    state.program.reachable = false;
+    elements.programStatus.textContent = "unknown";
+    elements.programStatus.className = "status status-connecting";
+    elements.programButton.disabled = true;
+  }
+}
+
+async function toggleProgram() {
+  const action = state.program.running ? "stop" : "start";
+  state.program.busy = true;
+  showProgram({ running: state.program.running });
+  log(action === "start" ? "Starting the robot program." : "Stopping the robot program.");
+
+  try {
+    const response = await fetch(`/api/robot/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intersection: elements.optionIntersection.checked,
+        duck_evasion: elements.optionDuckEvasion.checked
+      })
+    });
+    const status = await response.json();
+    state.program.busy = false;
+    showProgram(status);
+  } catch (error) {
+    state.program.busy = false;
+    log(`Robot program could not be ${action === "start" ? "started" : "stopped"}: ${error.message}`);
+    refreshProgram();
+  }
+}
+
+async function shutdownRobot() {
+  const name = state.robotName || "the Duckiebot";
+  if (!window.confirm(`Really power off ${name}? You have to press its power button to start it again.`)) {
+    return;
+  }
+
+  elements.shutdownButton.disabled = true;
+  log("Shutting down the Duckiebot.");
+  // never leave the button hanging if the robot doesn't answer
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 40000);
+  try {
+    const response = await fetch("/api/shutdown", { method: "POST", signal: controller.signal });
+    const result = await response.json();
+    if (result.ok) {
+      log("Shutdown accepted, the Duckiebot powers off now.");
+      elements.shutdownButton.textContent = "Shutting down...";
+      return;
+    }
+    log(`Shutdown failed: ${result.message}`);
+  } catch (error) {
+    log(error.name === "AbortError" ? "Shutdown failed: no answer from the robot." : `Shutdown failed: ${error.message}`);
+  } finally {
+    window.clearTimeout(timer);
+  }
+  elements.shutdownButton.disabled = false;
+}
+
+elements.programButton.addEventListener("click", toggleProgram);
+elements.shutdownButton.addEventListener("click", shutdownRobot);
 elements.startButton.addEventListener("click", () => publishStart(1));
 elements.stopButton.addEventListener("click", () => publishStart(0));
 elements.publishHsvButton.addEventListener("click", publishHsvTopics);
@@ -537,8 +704,15 @@ elements.cameraActive.addEventListener("change", () => {
   }
 });
 
-mountSliders();
-bootstrap();
-setStatus("offline");
-log(`Ready on ${state.robotName}. Attempting automatic connection.`);
-connect();
+async function init() {
+  await loadSavedSettings();
+  mountSliders();
+  bootstrap();
+  setStatus("offline");
+  log(`Ready on ${state.robotName}. Attempting automatic connection.`);
+  connect();
+  refreshProgram();
+  window.setInterval(refreshProgram, 2000);
+}
+
+init();

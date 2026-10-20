@@ -151,6 +151,14 @@ h1 {
   grid-column: span 12;
 }
 
+.log-output.program-output {
+  min-height: 0;
+  max-height: 140px;
+  margin: 14px 0 20px;
+  font-size: 0.78rem;
+  overflow-y: auto;
+}
+
 .tuning-panel-lane {
   grid-column: span 8;
 }
