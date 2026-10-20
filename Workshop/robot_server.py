@@ -33,6 +33,8 @@ DEFAULT_SETTINGS_FILE = '/workspace/settings/robot_settings.json'
 # Duckietown health API on the robot (the container runs with --network host).
 # A plain `sudo shutdown` keeps the fans running, this powers the robot off cleanly.
 SHUTDOWN_URL = os.environ.get('SHUTDOWN_URL', 'http://localhost:8085/trigger/shutdown')
+# seconds the battery waits before it cuts the power, the Jetson shuts down in the meantime
+SHUTDOWN_TIMEOUT = int(os.environ.get('SHUTDOWN_TIMEOUT', 20))
 
 # sourced before the robot program starts, so rospy and the duckietown messages can be imported
 ROS_SETUP_FILES = [
@@ -163,7 +165,7 @@ def shutdown_robot(attempts=3):
             answer = _health_api(SHUTDOWN_URL)
             print(f'[shutdown] attempt {attempt}: {answer}', flush=True)
             if answer.get('status') == 'needs-confirmation':
-                url = f"{SHUTDOWN_URL}?{urllib.parse.urlencode({'token': answer['token']})}"
+                url = f"{SHUTDOWN_URL}?{urllib.parse.urlencode({'token': answer['token'], 'timeout': SHUTDOWN_TIMEOUT})}"
                 answer = _health_api(url)
                 print(f'[shutdown] attempt {attempt} confirmed: {answer}', flush=True)
             if answer.get('status') == 'ok':
