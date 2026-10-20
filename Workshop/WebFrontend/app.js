@@ -39,6 +39,7 @@ const elements = {
   pidControls: document.getElementById("pidControls"),
   clearLogButton: document.getElementById("clearLogButton"),
   logOutput: document.getElementById("logOutput"),
+  shutdownButton: document.getElementById("shutdownButton"),
   programStatus: document.getElementById("programStatus"),
   programButton: document.getElementById("programButton"),
   programOutput: document.getElementById("programOutput"),
@@ -658,7 +659,31 @@ async function toggleProgram() {
   }
 }
 
+async function shutdownRobot() {
+  const name = state.robotName || "the Duckiebot";
+  if (!window.confirm(`Really power off ${name}? You have to press its power button to start it again.`)) {
+    return;
+  }
+
+  elements.shutdownButton.disabled = true;
+  log("Shutting down the Duckiebot.");
+  try {
+    const response = await fetch("/api/shutdown", { method: "POST" });
+    const result = await response.json();
+    if (result.ok) {
+      log("Shutdown accepted, the Duckiebot powers off now.");
+      elements.shutdownButton.textContent = "Shutting down...";
+      return;
+    }
+    log(`Shutdown failed: ${result.message}`);
+  } catch (error) {
+    log(`Shutdown failed: ${error.message}`);
+  }
+  elements.shutdownButton.disabled = false;
+}
+
 elements.programButton.addEventListener("click", toggleProgram);
+elements.shutdownButton.addEventListener("click", shutdownRobot);
 elements.startButton.addEventListener("click", () => publishStart(1));
 elements.stopButton.addEventListener("click", () => publishStart(0));
 elements.publishHsvButton.addEventListener("click", publishHsvTopics);

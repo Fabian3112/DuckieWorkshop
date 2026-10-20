@@ -9,6 +9,7 @@ Serves the files in WebFrontend (like `python3 -m http.server`) and adds a small
   GET  /api/settings        the last parameters set in the frontend
   POST /api/settings        save parameters, body: {"yellow": {...}, "pid": {...}, ...}
                             (only the given sections are replaced)
+  POST /api/shutdown        power the Duckiebot off through the Duckietown health API
 """
 import argparse
 import collections
@@ -19,12 +20,17 @@ import signal
 import subprocess
 import sys
 import threading
+import urllib.error
+import urllib.request
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 WORKSHOP_DIR = os.path.dirname(os.path.abspath(__file__))
 RUN_ROBOT = os.path.join(WORKSHOP_DIR, 'run_robot.py')
 DEFAULT_SETTINGS_FILE = '/workspace/settings/robot_settings.json'
+# Duckietown health API on the robot (the container runs with --network host).
+# A plain `sudo shutdown` keeps the fans running, this powers the robot off cleanly.
+SHUTDOWN_URL = os.environ.get('SHUTDOWN_URL', 'http://localhost:8085/trigger/shutdown')
 
 # sourced before the robot program starts, so rospy and the duckietown messages can be imported
 ROS_SETUP_FILES = [
@@ -133,6 +139,25 @@ class Settings:
             return data
 
 
+def shutdown_robot():
+    """Ask the health API to power the robot off. Returns (ok, message)."""
+    last_error = ''
+    for method in ('GET', 'POST'):
+        try:
+            request = urllib.request.Request(SHUTDOWN_URL, method=method)
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return True, response.read().decode(errors='replace')[:300]
+        except urllib.error.HTTPError as exc:
+            last_error = f'{method} {SHUTDOWN_URL}: HTTP {exc.code} {exc.read().decode(errors="replace")[:300]}'
+            # wrong method, try the other one
+            if exc.code != 405:
+                break
+        except (urllib.error.URLError, OSError) as exc:
+            last_error = f'{method} {SHUTDOWN_URL}: {exc}'
+            break
+    return False, last_error
+
+
 class Handler(SimpleHTTPRequestHandler):
     robot = None
     settings = None
@@ -192,6 +217,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json({'stopped': stopped, **self.robot.status()})
         elif path == '/api/settings':
             self.send_json(self.settings.update(body))
+        elif path == '/api/shutdown':
+            self.robot.stop()
+            ok, message = shutdown_robot()
+            self.send_json({'ok': ok, 'message': message}, 200 if ok else 502)
         else:
             self.send_json({'error': 'not found'}, 404)
 
