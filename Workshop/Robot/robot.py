@@ -110,11 +110,16 @@ class Robot:
         self.drive_intersection = False
         self.intersection_possibilities = []        
 
-        # duck evasion: turn left, drive forward, turn right, then follow the lane again
+        # duck evasion: these steps run one after another, then the robot follows the lane again
+        # ('left', degrees), ('right', degrees) or ('forward', meters)
         self.duckie = False
-        self.duck_left_degrees = 45
-        self.duck_forward_distance = 0.2
-        self.duck_right_degrees = 90
+        self.duck_manoeuvre = [
+            ('left', 45),
+            ('forward', 0.2),
+            ('right', 45),
+            ('forward', 0.2),
+            ('right', 45),
+        ]
         self.duck_cooldown = 2.0    # seconds after an evasion in which ducks are ignored
         self._last_evasion = 0.0
         
@@ -151,16 +156,12 @@ class Robot:
     def evade_duckie(self):
         print('duck ahead, evading to the left')
         self.publish_velocity(0.0, 0.0)
-        steps = [
-            lambda: self.left(self.duck_left_degrees),
-            lambda: self.forward(self.duck_forward_distance),
-            lambda: self.right(self.duck_right_degrees),
-        ]
-        for step in steps:
+        moves = {'left': self.left, 'right': self.right, 'forward': self.forward}
+        for move, value in self.duck_manoeuvre:
             # stop button pressed during the manoeuvre
             if not self.is_running:
                 break
-            step()
+            moves[move](value)
         self.publish_velocity(0.0, 0.0)
         self._last_evasion = time.time()
         print('duck evaded, back to lane following')
