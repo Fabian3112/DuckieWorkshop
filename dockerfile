@@ -35,6 +35,16 @@ RUN pip3 install --no-cache-dir \
 	ipyturtle3
 
 
+# Build the ROS message package once at image build time. It is copied on its
+# own first so that code changes elsewhere in Workshop don't trigger a rebuild.
+COPY Workshop/Duckietown_msg ./Workshop/Duckietown_msg
+RUN bash -c "source /opt/ros/noetic/setup.bash \
+	&& cd /workspace/Workshop/Duckietown_msg \
+	&& catkin_make"
+
+# Shells opened with docker exec get ROS and the message package as well
+RUN echo "source /workspace/Workshop/Duckietown_msg/devel/setup.bash" >> /root/.bashrc
+
 COPY Workshop ./Workshop
 COPY scripts/start_services.sh /usr/local/bin/start_services.sh
 
@@ -53,4 +63,7 @@ HEALTHCHECK --interval=20s --timeout=5s --start-period=25s --retries=3 \
 	CMD curl -fsS "http://127.0.0.1:${JUPYTER_PORT}/lab" >/dev/null || exit 1
 
 
-ENTRYPOINT ["bash", "-c", "/usr/local/bin/start_services.sh & exec bash"]
+# Services run in the foreground, so the container also works detached
+# (docker run -d --restart unless-stopped) and starts on robot boot.
+# Open a shell with: docker exec -it duckieworkshop bash
+ENTRYPOINT ["/usr/local/bin/start_services.sh"]
