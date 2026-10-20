@@ -20,7 +20,9 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -139,22 +141,38 @@ class Settings:
             return data
 
 
-def shutdown_robot():
-    """Ask the health API to power the robot off. Returns (ok, message)."""
+# talk to the health API directly, never through an HTTP proxy from the environment
+_no_proxy = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+def _health_api(url):
+    with _no_proxy.open(url, timeout=5) as response:
+        return json.loads(response.read().decode(errors='replace'))
+
+
+def shutdown_robot(attempts=3):
+    """Ask the Duckietown health API to power the robot off. Returns (ok, message).
+
+    The API answers the first call with a token ("needs-confirmation") and only shuts down
+    when it is called again with that token. It then tells the battery to cut the power
+    and shuts down the Jetson.
+    """
     last_error = ''
-    for method in ('GET', 'POST'):
+    for attempt in range(1, attempts + 1):
         try:
-            request = urllib.request.Request(SHUTDOWN_URL, method=method)
-            with urllib.request.urlopen(request, timeout=10) as response:
-                return True, response.read().decode(errors='replace')[:300]
-        except urllib.error.HTTPError as exc:
-            last_error = f'{method} {SHUTDOWN_URL}: HTTP {exc.code} {exc.read().decode(errors="replace")[:300]}'
-            # wrong method, try the other one
-            if exc.code != 405:
-                break
-        except (urllib.error.URLError, OSError) as exc:
-            last_error = f'{method} {SHUTDOWN_URL}: {exc}'
-            break
+            answer = _health_api(SHUTDOWN_URL)
+            print(f'[shutdown] attempt {attempt}: {answer}', flush=True)
+            if answer.get('status') == 'needs-confirmation':
+                url = f"{SHUTDOWN_URL}?{urllib.parse.urlencode({'token': answer['token']})}"
+                answer = _health_api(url)
+                print(f'[shutdown] attempt {attempt} confirmed: {answer}', flush=True)
+            if answer.get('status') == 'ok':
+                return True, 'shutdown accepted by the health API'
+            last_error = f"health API answered: {answer}"
+        except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
+            last_error = f'{SHUTDOWN_URL}: {exc}'
+            print(f'[shutdown] attempt {attempt} failed: {last_error}', flush=True)
+        time.sleep(1)
     return False, last_error
 
 

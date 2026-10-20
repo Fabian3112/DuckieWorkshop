@@ -667,8 +667,11 @@ async function shutdownRobot() {
 
   elements.shutdownButton.disabled = true;
   log("Shutting down the Duckiebot.");
+  // never leave the button hanging if the robot doesn't answer
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 40000);
   try {
-    const response = await fetch("/api/shutdown", { method: "POST" });
+    const response = await fetch("/api/shutdown", { method: "POST", signal: controller.signal });
     const result = await response.json();
     if (result.ok) {
       log("Shutdown accepted, the Duckiebot powers off now.");
@@ -677,7 +680,9 @@ async function shutdownRobot() {
     }
     log(`Shutdown failed: ${result.message}`);
   } catch (error) {
-    log(`Shutdown failed: ${error.message}`);
+    log(error.name === "AbortError" ? "Shutdown failed: no answer from the robot." : `Shutdown failed: ${error.message}`);
+  } finally {
+    window.clearTimeout(timer);
   }
   elements.shutdownButton.disabled = false;
 }
