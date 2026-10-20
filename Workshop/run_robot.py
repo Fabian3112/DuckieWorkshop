@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Start the robot program, like Robot() in a Jupyter notebook.
 
-The frontend starts this script with its "Switch Robot On" button (see robot_server.py).
+The frontend starts this script with its "Start Robot Program" button (see robot_server.py).
 The robot then waits for the "Start Driving" button before it drives.
 
   python3 run_robot.py [--intersection] [--duck-evasion] [--settings robot_settings.json]
@@ -66,7 +66,7 @@ def main():
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    print('robot is on, waiting for the Start Driving button')
+    print('robot program is running, waiting for the Start Driving button')
     rospy.spin()
 
 
