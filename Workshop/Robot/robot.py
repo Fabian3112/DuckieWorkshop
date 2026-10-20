@@ -10,6 +10,7 @@ from Robot.tracker_2 import Tracker
 from duckietown_msgs.msg import Twist2DStamped
 from std_msgs.msg import Int32
 import time
+import threading
 
 
 import rospy
@@ -75,18 +76,8 @@ class Robot:
         self.is_running = False
         self.method_blocked = False
 
-        crop_bounds = {}
-        crop_bounds['top_left_x'] = self.top_left_x 
-        crop_bounds['top_left_y'] = self.top_left_y 
-        crop_bounds['top_right_x'] = self.top_right_x
-        crop_bounds['top_right_y'] = self.top_right_y
-        crop_bounds['bottom_left_x'] = self.bottom_left_x 
-        crop_bounds['bottom_left_y'] = self.bottom_left_y
-        crop_bounds['bottom_right_x'] = self.bottom_right_x
-        crop_bounds['bottom_right_y'] = self.bottom_right_y
-
-        duckie_detector = DuckieDetector(crop_bounds)
-        self.detect_duckies = duckie_detector.detect_duckies
+        self.duckie_detector = DuckieDetector(vehicle_name=self.vehicle_name)
+        self.detect_duckies = self.duckie_detector.detect_duckies
         
         print("initialising ros publishers")
         vehicle_name = self.vehicle_name
@@ -102,7 +93,11 @@ class Robot:
         print("Initialising ros subscriber")
         #image subscriber
         self._camera_topic = f"/{vehicle_name}/camera_node/image/compressed"
-        self.image_listener = rospy.Subscriber(self._camera_topic, CompressedImage, self.image_callback)
+        # queue_size=1: always work on the newest image. Without it old images pile up
+        # (for example during a turn) and the robot reacts to what it saw seconds ago.
+        # buff_size must be big enough for a whole image, otherwise queue_size is ignored.
+        self.image_listener = rospy.Subscriber(self._camera_topic, CompressedImage, self.image_callback,
+                                               queue_size=1, buff_size=2**24)
 
         #start robot subscriber
         start_topic = f"/{vehicle_name}/start"
@@ -115,6 +110,21 @@ class Robot:
         self.redline = False
         self.drive_intersection = False
         self.intersection_possibilities = []        
+
+        # duck evasion: these steps run one after another, then the robot follows the lane again
+        # ('left', degrees), ('right', degrees) or ('forward', meters)
+        self.duckie = False
+        self.duck_manoeuvre = [
+            ('left', 45),
+            ('forward', 0.2),
+            ('right', 45),
+            ('forward', 0.2),
+            ('right', 45),
+        ]
+        self.duck_pause = 0.3       # seconds to wait after each turn of the manoeuvre
+        self.evading = False
+        self.duck_cooldown = 2.0    # seconds after an evasion in which ducks are ignored
+        self._last_evasion = 0.0
         
         print("done robot is ready")
 
@@ -143,6 +153,30 @@ class Robot:
     def get_intersection(self):
         return self.intersection_possibilities
 
+    def get_duckie(self):
+        return self.duckie
+
+    def evade_duckie(self):
+        # runs in its own thread, so camera images (and the debug views) keep coming during the manoeuvre
+        print('duck ahead, evading to the left')
+        try:
+            self.publish_velocity(0.0, 0.0)
+            for move, value in self.duck_manoeuvre:
+                # stop button pressed during the manoeuvre
+                if not self.is_running:
+                    break
+                if move == 'left':
+                    self.left(value, pause=self.duck_pause)
+                elif move == 'right':
+                    self.right(value, pause=self.duck_pause)
+                else:
+                    self.forward(value)
+            self.publish_velocity(0.0, 0.0)
+        finally:
+            self._last_evasion = time.time()
+            self.evading = False
+        print('duck evaded, back to lane following')
+
     
     def image_callback(self, image_msg):
         image = self._bridge.compressed_imgmsg_to_cv2(image_msg)
@@ -156,27 +190,29 @@ class Robot:
             except:
                 self.method_blocked = False
 
-    def left(self,degrees):
-        self.turn(degrees)
+    def left(self, degrees, pause=3.0):
+        self.turn(degrees, pause)
 
-    def right(self,degrees):
-        self.turn(-degrees)
+    def right(self, degrees, pause=3.0):
+        self.turn(-degrees, pause)
 
 
     def follow_lane(self, image):
         
         #print("starting lane following")
         
-        detected_duckies = self.detect_duckies(image)
-
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         self.image_hsv = hsv_img
         
-        croped_image = self.crop_image(hsv_img)
-        
-        
         debug_img = self.crop_image(image)
         self.image_croped = debug_img
+
+        # converting the small cropped image is cheaper than cropping the HSV image again
+        croped_image = cv2.cvtColor(debug_img, cv2.COLOR_BGR2HSV)
+
+        # before the lane detection draws into debug_img
+        detected_duckies = self.detect_duckies(croped_image, debug_img)
+        self.duckie = len(detected_duckies) > 0
 
         #print(f'original image {hsv_img.shape} croped {croped_image.shape}')
 
@@ -193,6 +229,12 @@ class Robot:
             lane_center = self.detect_lane(croped_image,debug_img)
 
         self.redline = is_crossway
+
+        # the duck manoeuvre is driving: only show the images, don't steer
+        if self.evading:
+            self.publish_image(debug_img)
+            return
+
         if is_crossway and self.drive_intersection:
             print('at crossway')
             if abs(crossway_heading_error) > 1:
@@ -223,7 +265,13 @@ class Robot:
                     print(f'here I was f')
                     self.forward(0.4)
 
-        elif len(detected_duckies) > 0:
+        elif self.duckie and time.time() - self._last_evasion > self.duck_cooldown:
+            if self.is_running and self.duckie_detector.evade:
+                self.evading = True
+                threading.Thread(target=self.evade_duckie, daemon=True).start()
+                self.publish_image(debug_img)
+                return
+            # evasion switched off: stop in front of the duck
             self.v = 0.0
             self.omega = 0.0
 
@@ -241,6 +289,9 @@ class Robot:
         self.velocity_publisher.publish(message)
 
     def publish_image(self,image):
+        # nobody is watching the debug image, so skip the JPEG encoding
+        if self.debug_image_publisher.get_num_connections() == 0:
+            return
         debug_msg = CompressedImage()
         debug_msg.header.stamp = rospy.Time.now()
         debug_msg.format = "jpeg"

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duckiebot Duck Detection</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .duck-view-panel {
+      grid-column: span 8;
+      padding: 20px;
+    }
+
+    .duck-tuning-panel {
+      grid-column: span 4;
+      padding: 20px;
+    }
+
+    .duck-tuning-panel fieldset {
+      margin-bottom: 14px;
+    }
+
+    .colour-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .colour-swatch {
+      width: 36px;
+      height: 24px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+
+    .colour-remove {
+      padding: 6px 12px;
+    }
+
+    .add-colour {
+      width: 100%;
+      margin-bottom: 14px;
+    }
+
+    #duckTopicLabel {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    #duckImage {
+      display: none;
+      width: 100%;
+      height: auto;
+    }
+
+    #duckPlaceholder {
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .duck-info {
+      min-height: 1.4em;
+      margin: 12px 0 0;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .duck-view-panel,
+      .duck-tuning-panel {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <main class="page">
+    <header class="hero card">
+      <div>
+        <p class="eyebrow">Duckiebot Workshop</p>
+        <h1>Duck Detection</h1>
+        <p class="subtitle">Tune the colour of the ducks live. Pink pixels match the colour, a green box is a duck the robot will drive around.</p>
+      </div>
+
+      <div class="hero-meta">
+        <span id="connectionStatus" class="status status-offline">offline</span>
+        <p id="endpointLabel" class="endpoint"></p>
+        <a class="button button-secondary" href="index.html">Back</a>
+      </div>
+    </header>
+
+    <section class="grid">
+      <section class="card duck-view-panel">
+        <div class="panel-heading">
+          <h2>Detection View</h2>
+          <span id="duckTopicLabel" class="topic-label"></span>
+        </div>
+        <div class="camera-frame">
+          <img id="duckImage" alt="Duck detection view: camera with matches on the left, mask on the right" />
+          <p id="duckPlaceholder">No image received yet. The robot code must be running.</p>
+        </div>
+        <p class="duck-info">Left: the robot's cropped image with matching pixels (pink) and found blobs with their size. A duck only counts once its bottom edge passes the orange trigger line (higher value = closer). Right: the colour mask of all colours together. For Hue, a lower value above the upper value selects everything outside that range (useful for red).</p>
+      </section>
+
+      <section class="card duck-tuning-panel">
+        <div class="panel-heading">
+          <h2>Duck Colours</h2>
+          <button id="publishButton" class="button button-primary" disabled>Publish</button>
+        </div>
+        <div id="colourList"></div>
+        <button id="addColourButton" class="button button-secondary add-colour" disabled>Add colour</button>
+        <fieldset>
+          <legend>Size and distance</legend>
+          <div class="slider-stack" id="shapeControls"></div>
+        </fieldset>
+        <label class="checkbox-row">
+          <input id="evadeActive" type="checkbox" checked disabled />
+          <span>Drive around ducks (off: stop in front of them)</span>
+        </label>
+      </section>
+    </section>
+  </main>
+
+  <script src="duck.js"></script>
+</body>
+</html>
