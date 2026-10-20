@@ -592,14 +592,14 @@ function showProgram(status) {
   state.program.running = Boolean(status.running);
   state.program.reachable = true;
 
-  let label = state.program.running ? "running" : "stopped";
+  let label = state.program.running ? "on" : "off";
   if (state.program.busy) {
-    label = state.program.running ? "stopping" : "starting";
+    label = state.program.running ? "switching off" : "switching on";
   }
   elements.programStatus.textContent = label;
   elements.programStatus.className = `status status-${state.program.running ? "online" : state.program.busy ? "connecting" : "offline"}`;
 
-  elements.programButton.textContent = state.program.running ? "Stop program" : "Start program";
+  elements.programButton.textContent = state.program.running ? "Switch Robot Off" : "Switch Robot On";
   elements.programButton.className = `button ${state.program.running ? "button-danger" : "button-primary"}`;
   elements.programButton.disabled = state.program.busy;
 
@@ -637,7 +637,7 @@ async function toggleProgram() {
   const action = state.program.running ? "stop" : "start";
   state.program.busy = true;
   showProgram({ running: state.program.running });
-  log(action === "start" ? "Starting the robot program." : "Stopping the robot program.");
+  log(action === "start" ? "Switching the robot on." : "Switching the robot off.");
 
   try {
     const response = await fetch(`/api/robot/${action}`, {
@@ -653,7 +653,7 @@ async function toggleProgram() {
     showProgram(status);
   } catch (error) {
     state.program.busy = false;
-    log(`Robot program could not be ${action === "start" ? "started" : "stopped"}: ${error.message}`);
+    log(`Robot could not be switched ${action === "start" ? "on" : "off"}: ${error.message}`);
     refreshProgram();
   }
 }
