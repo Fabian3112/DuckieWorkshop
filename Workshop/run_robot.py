@@ -55,7 +55,7 @@ def main():
     settings = load_settings(args.settings)
     apply_settings(robot, settings, args.duck_evasion)
     print(f'intersections: {"on" if args.intersection else "off"}, '
-          f'duck evasion: {"on" if args.duck_evasion else "off (stops in front of ducks)"}')
+          f'duck evasion: {"on" if args.duck_evasion else "off (ducks are ignored)"}')
     print(f'parameters loaded: {", ".join(settings) if settings else "none saved yet, using defaults"}')
 
     def shutdown(signum, frame):

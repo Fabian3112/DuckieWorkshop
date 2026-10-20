@@ -269,15 +269,13 @@ class Robot:
                     print(f'here I was f')
                     self.forward(0.4)
 
-        elif self.duckie and time.time() - self._last_evasion > self.duck_cooldown:
-            if self.is_running and self.duckie_detector.evade:
-                self.evading = True
-                threading.Thread(target=self.evade_duckie, daemon=True).start()
-                self.publish_image(debug_img)
-                return
-            # evasion switched off: stop in front of the duck
-            self.v = 0.0
-            self.omega = 0.0
+        # evasion switched off: ducks are ignored and the robot just follows the lane
+        elif (self.duckie and self.duckie_detector.evade and self.is_running
+              and time.time() - self._last_evasion > self.duck_cooldown):
+            self.evading = True
+            threading.Thread(target=self.evade_duckie, daemon=True).start()
+            self.publish_image(debug_img)
+            return
 
         else:
             self.v, self.omega = self.pid_controller(lane_center)
