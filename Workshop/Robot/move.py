@@ -148,7 +148,7 @@ class Mover:
             kd = 10.0
             ki = 0.3
 
-            max_omega = 10
+            max_omega = 50
 
             if abs(error_theta) >= abs(previous_error) - 0.001: 
                 integral_error += error_theta
