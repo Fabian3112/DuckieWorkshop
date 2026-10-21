@@ -121,8 +121,8 @@ class Robot:
         self.duck_manoeuvre = [
             ('left', 60),
             ('forward', 0.3),
-            ('right', 80),
-            #('forward', 0.2),
+            ('right', 60),
+            ('forward', 0.1),
             #('right', 45),
         ]
         self.duck_pause = 0.3       # seconds to wait after each turn of the manoeuvre
