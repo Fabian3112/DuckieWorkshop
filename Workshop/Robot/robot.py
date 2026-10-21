@@ -120,7 +120,7 @@ class Robot:
         self.duckie = False
         self.duck_manoeuvre = [
             ('left', 60),
-            ('forward', 0.3),
+            ('forward', 0.2),
             ('right', 60),
             ('forward', 0.1),
             #('right', 45),
