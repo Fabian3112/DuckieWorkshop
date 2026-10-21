@@ -119,9 +119,9 @@ class Robot:
         # ('left', degrees), ('right', degrees) or ('forward', meters)
         self.duckie = False
         self.duck_manoeuvre = [
-            ('left', 45),
-            ('forward', 0.2),
-            ('right', 45),
+            ('left', 60),
+            ('forward', 0.3),
+            ('right', 60),
             ('forward', 0.2),
             ('right', 45),
         ]
