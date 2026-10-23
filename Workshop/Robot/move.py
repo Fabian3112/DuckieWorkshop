@@ -145,10 +145,10 @@ class Mover:
                 
             time.sleep(0.05)
             kp = 2.0
-            kd = 50.0
+            kd = 10.0
             ki = 0.9
 
-            max_omega = 20
+            max_omega = 50
 
             if abs(error_theta) >= abs(previous_error) - 0.001: 
                 integral_error += error_theta
